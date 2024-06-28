@@ -13,18 +13,19 @@ This project links CPET (Cardiopulmonary Exercise Testing) files with database e
 - Add your CPET database file as `CPETdb.xlsx` in the `/data/` directory
 
 ## Directory Structure
+```
 project_root/
 │
 ├── data/
 │   ├── cpet raw/
 │   │   └── (all .sum files)
 │   │
-│   └── CPETdb.xlsx
+│   ├── CPETdb.xlsx
 │   └── linked files.csv
 │
 ├── init_project.py
 └── link_files.py
-
+```
 ## Running the File Linking Process
 
 Execute the following command:
