@@ -1,6 +1,7 @@
 import os
-
 from ProjectStrings import ProjectStrings
+from typing import Dict, List, Optional, Tuple
+import pandas as pd
 
 
 class Raw_CPET_data:
@@ -14,6 +15,7 @@ class Raw_CPET_data:
     def _check_file_exists(self):
         if not os.path.exists(self.cpet_data_path):
             raise FileNotFoundError(f"File {self.cpet_data_path} not found")
+
 
     def _get_columns(self):
         res = self._parse_file(self.cpet_data_path)
@@ -66,11 +68,6 @@ class Raw_CPET_data:
 
     def __str__(self):
         return f"Raw_CPET_data class with file {self.cpet_data_path}"
-import os
-from typing import Dict, List, Optional, Tuple
-
-from ProjectStrings import ProjectStrings
-
 
 def load_cpet_data(cpet_data_dir: str) -> List[Raw_CPET_data]:
     return [Raw_CPET_data(file) for file in os.listdir(cpet_data_dir)]
@@ -78,60 +75,56 @@ def load_cpet_data(cpet_data_dir: str) -> List[Raw_CPET_data]:
 def find_patient(cpet_data: List[Raw_CPET_data], patient_search_details: Dict[str, str]) -> Tuple[Optional[str], str]:
     for data in cpet_data:
         patient_id = data.read_column('PatientID')
-        if patient_id in [patient_search_details['id'], 
-                          patient_search_details['hospital_num'], 
-                          patient_search_details['nhs_num']]:
-            match_type = 'ID'
+        if patient_id in [patient_search_details['patient ID_CPETdb'], 
+                          patient_search_details['hospital number'], 
+                          patient_search_details['nhs number']]:
             
-            if patient_id == patient_search_details['id']:
-                match_detail = 'id'
-            elif patient_id == patient_search_details['hospital_num']:
+            match_detail = 'ID'
+            if patient_id == patient_search_details['patient ID_CPETdb']:
+                match_detail = 'patient ID CPETdb'
+            elif patient_id == patient_search_details['hospital number']:
                 match_detail = 'hospital number'
             else:
                 match_detail = 'NHS number'
             return data.file_name, f"Matched by {match_detail}"
         
-        # check that the Birthday Column exists 
-        if 'Birthday' in data.columns or 'VisitDateTime' in data.columns:
-            print(data.read_column('Birthday'))
-            print(data.read_column('VisitDateTime'))
-            print(patient_search_details['date_of_birth'])
-            print(patient_search_details['date_of_test'])
-            if (data.read_column('Birthday') == patient_search_details['date_of_birth'] and
+        if 'Birthday' in data.columns and 'VisitDateTime' in data.columns:
+            if (data.read_column('Birthday') == patient_search_details['Date of Birth'] and
                 data.read_column('VisitDateTime') == patient_search_details['date_of_test']):
                 print(f"Found patient with matching DOB and test date in file {data.file_name}")
-
-                # Check for other patients with the same DOB and test date
                 for data2 in cpet_data:
-                    if (data2 != data and
-                        data2.read_column('Birthday') == patient_search_details['date_of_birth'] and
-                        data2.read_column('VisitDateTime') == patient_search_details['date_of_test']):
-                        print(f"Another patient with matching DOB and test date in file {data2.file_name}")
-                        return None, "Multiple matches found with the same DOB and test date"
+                    if data2 != data:
+                        if 'Birthday' in data2.columns and 'VisitDateTime' in data2.columns:
+                            if (data2.read_column('Birthday') == patient_search_details['date_of_birth'] and
+                                data2.read_column('VisitDateTime') == patient_search_details['date_of_test']):
+                                print(f"Another patient with matching DOB and test date in file {data2.file_name}")
+                                return None, "Multiple matches found with the same DOB and test date"
 
                 return data.file_name, "Matched by date of birth and test date"
-
     return None, "No match found"
 
 def main():
     strings = ProjectStrings()
     cpet_data = load_cpet_data(strings.cpet_data)
 
-    patient_search_details = {
-        'id': '',
-        'hospital_num': 'df5678',
-        'nhs_num': '4794533123',   
-        'date_of_birth': '08/08/1976',
-        'date_of_test': '25/09/2008',
-    }
+    # load the cpetdb
 
+    cpet_db = pd.read_excel(strings.cpet_db)
+
+
+    # generate a list of dictionaries from the cpetdb to search for with each row being a dictionary
+    patient_search_details = cpet_db.to_dict(orient='records')
+
+
+    for patient in patient_search_details:
+        found_file, match_reason = find_patient(cpet_data, patient)
+        if found_file:
+            print(f"The patient's data was found in the file: {found_file}")
+            print(f"Match reason: {match_reason}")
+        else:
+            print(f"No matching file found for the patient. {match_reason}")
     found_file, match_reason = find_patient(cpet_data, patient_search_details)
 
-    if found_file:
-        print(f"The patient's data was found in the file: {found_file}")
-        print(f"Match reason: {match_reason}")
-    else:
-        print(f"No matching file found for the patient. {match_reason}")
 
 if __name__ == "__main__":
     main()
