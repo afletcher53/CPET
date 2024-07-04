@@ -14,6 +14,8 @@ class ProjectStrings:
             self.linked_data = os.path.join(
                 self.data_path, 'linked data.csv')
             self.logs = "./logs/"
+            self.linked_data_with_db = os.path.join(
+                self.data_path, 'linked data with db.csv')
             self._spawn_directories()
 
     def __str__(self):
