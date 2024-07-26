@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "cpet"
+version = "0.1.0"
+description = ""
+authors = ["Aaron Fletcher <afletcher53@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2.2"
+tqdm = "^4.66.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

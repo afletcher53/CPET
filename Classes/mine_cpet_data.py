@@ -20,16 +20,16 @@ class Raw_CPET_data:
         res = self._parse_file(self.cpet_data_path)
         return res.keys()
 
-    def _parse_file(self, file_path):
-        result = {}
-        with open(file_path, 'r') as file:
-            for line in file:
-                parts = line.strip().split(';')
-                if len(parts) >= 5:
-                    key = parts[2]
-                    value = parts[4]
-                    result[key] = value
-        return result
+    # def _parse_file(self, file_path):
+    #     result = {}
+    #     with open(file_path, 'r') as file:
+    #         for line in file:
+    #             parts = line.strip().split(';')
+    #             if len(parts) >= 5:
+    #                 key = parts[2]
+    #                 value = parts[4]
+    #                 result[key] = value
+    #     return result
 
     def _check_column_exists(self, column_name):
         if column_name not in self.columns and column_name != 'VisitDateTimeAsDatetimeObject':
@@ -67,18 +67,45 @@ class Raw_CPET_data:
         for column_name in column_names:
             self._check_column_exists(column_name)
 
+    def _parse_file(self, file_path):
+        result = {}
+        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'windows-1252']
+        
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as file:
+                    for line in file:
+                        parts = line.strip().split(';')
+                        if len(parts) >= 5:
+                            key = parts[2]
+                            value = parts[4]
+                            result[key] = value
+                return result  # If successful, return the result and exit the function
+            except UnicodeDecodeError:
+                continue  # If this encoding fails, try the next one
+        
+        raise UnicodeDecodeError(f"Unable to decode the file {file_path} with any of the attempted encodings")
+
     def _check_bxb_section(self):
-        with open(self.cpet_data_path, 'r') as file:
-            lines = file.readlines()
-            for i, line in enumerate(lines):
-                if line.strip() == '$;4000;BxBSection;;':
-                    if i + 1 < len(lines):
-                        next_line = lines[i + 1].strip()
-                        parts = next_line.split(';')
-                        if len(parts) >= 4:
-                            values = parts[3].split(';')
-                            return all(value.isdigit() for value in values)
-        return False
+        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'windows-1252']
+        
+        for encoding in encodings:
+            try:
+                with open(self.cpet_data_path, 'r', encoding=encoding) as file:
+                    lines = file.readlines()
+                    for i, line in enumerate(lines):
+                        if line.strip() == '$;4000;BxBSection;;':
+                            if i + 1 < len(lines):
+                                next_line = lines[i + 1].strip()
+                                parts = next_line.split(';')
+                                if len(parts) >= 4:
+                                    values = parts[3].split(';')
+                                    return all(value.isdigit() for value in values)
+                return False  # If we've read the file but didn't find the section
+            except UnicodeDecodeError:
+                continue  # If this encoding fails, try the next one
+        
+        raise UnicodeDecodeError(f"Unable to decode the file {self.cpet_data_path} with any of the attempted encodings")
 
     def is_within_6_months_of_operation(self, operation_date):
         visit_date = self.read_column('VisitDateTime')
