@@ -50,10 +50,14 @@ def find_patient(
         ("hospital number", "hospital number"),
         ("nhs number", "NHS number"),
         ("patient ID_CPETmachine", "patient ID CPETMachine"),
+        ("case note number 1", "case note number 1"),
+        ("case note number 2", "case note number 2"),
     ]
 
     all_matches = []
     operation_date = patient_search_details["Operation date"]
+
+    # If the operation date is NAN then show failure TODO: Implement this
 
     filtered_cpet_data = []
     for data in cpet_data:
