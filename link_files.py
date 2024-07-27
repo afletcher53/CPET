@@ -166,7 +166,7 @@ def categorize_match_reason(reason: str) -> str:
         return "Other match"
 
 
-def main(use_tqdm=False):
+def main():
     """Main function to process CPET data and find patient matches."""
     strings = ProjectStrings()
     cpet_data = load_cpet_data(strings.cpet_data)
@@ -180,13 +180,8 @@ def main(use_tqdm=False):
     mappings = []
     match_reasons_counter = Counter()
 
-    patient_iterable = (
-        tqdm(patient_search_details, desc="Processing patients")
-        if use_tqdm
-        else patient_search_details
-    )
-
-    for patient in patient_iterable:
+    # Wrap the patient processing loop with tqdm
+    for patient in tqdm(patient_search_details, desc="Processing patients"):
         found_file, match_reason, all_matches = find_patient(
             cpet_data, patient)
 
@@ -224,4 +219,4 @@ def main(use_tqdm=False):
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(use_tqdm=False)
+    main(use_tqdm=True)
