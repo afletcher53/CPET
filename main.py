@@ -64,7 +64,7 @@ def main():
     linked_data_with_db_copy = pd.read_csv(Strings.linked_data_with_db)
     # drop linked data with db copy columns Date of Birth, hospital number, case note number 1, case note number 2, patient ID_CPETdb patient ID_CPETdbmachine
     linked_data_with_db_copy.drop(
-        columns=['Date of Birth', 'hospital number', 'case note number 1', 'case note number 2', 'patient ID_CPETdb', 'patient ID_CPETmachine', 'Patient ID', 'Hospital Number', 'NHS Number', 'DOB', 'Test Date_y', 'CPET File', 'Match Reason', 'All Matches'
+        columns=['Date of Birth', 'hospital number', 'nhs number', 'case note number 1', 'case note number 2', 'patient ID_CPETdb', 'patient ID_CPETmachine', 'Patient ID', 'Hospital Number', 'NHS Number', 'DOB', 'Test Date_y', 'CPET File', 'Match Reason', 'All Matches'
                  ], inplace=True)
 
     for index, row in matched_df.iterrows():
