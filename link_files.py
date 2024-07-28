@@ -219,4 +219,4 @@ def main():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(use_tqdm=True)
+    main()
