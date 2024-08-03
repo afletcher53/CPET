@@ -19,6 +19,8 @@ class Integrity_checks:
         self.cpet_raw_files = self._find_raw_files()
         self._check_raw_files_extensions()
         self._check_cpet_db()
+        logger.info("All integrity checks passed")
+
 
     def _find_raw_files(self):
         """

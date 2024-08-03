@@ -1,0 +1,27 @@
+Age
+BMI
+HR BPM MaxValue
+HR BPM PredMax
+Chronotropic Index
+Height
+Weight
+Race
+Site
+StartExercise
+InfoSection
+BreezeVersion
+DateFormat
+TimeFormat
+HeightUnit
+WeightUnit
+MeasurementUnit
+AgeUnit
+LLN/ULN Method
+DateCreated
+TemperatureUnit
+AveragingMethodForSummary
+SpeedUnit
+BarPressureUnit
+Current Date/Time
+Current Date
+Current Time

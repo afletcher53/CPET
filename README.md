@@ -62,3 +62,11 @@ For each patient in CPETDB we take {OPERATION DATE, PATIENT ID, NHS NUMBER, HOSP
     - SORT by CPETdb PATIENT ID > CPETdb NHS NUMBER > CPETdb HOSPITAL NUMBER > CPETdb MACHINE NUMBER > DOB&TEST (i.e. our measure of link strength)
 - IF multiple SUMs on same day, REMOVE ALL BUT FIRST from MATCH LIST.
 - Take first Match list result
+
+### Adding new features to be extracted.
+
+sum_features.txt contains all the names of features that are to be extracted to the final data
+If you input a feature that is NOT in ProjectString's featuremap, it will raise an error. 
+Current GXT/BxB Feature pulling is not supported.
+All potential Features are in options.txt
+
