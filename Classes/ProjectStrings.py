@@ -21,6 +21,7 @@ class ProjectStrings:
             self.anonymised_linked_data_with_db = os.path.join(
                 self.data_path, './anonymised/linked data with db.csv')
             self.sum_features = "./sum_features.txt"
+            self.gxt_features = self._initialize_gxt_features()
             self._feature_maps = self._initialize_feature_maps()
             self._spawn_directories()
 
@@ -37,20 +38,28 @@ class ProjectStrings:
         if not os.path.exists(self.anonymised):
             os.mkdir(self.anonymised)
 
-    def _initialize_feature_maps(self):
+    def _initialize_gxt_features(self):
+        feature_maps = {}
+        start_reading = False
+        with open(os.path.join(self.data_path, './template_sum.template'), 'r') as file:
+            for line in file:
+                if '$;1000;GXTestDataSection;' in line:
+                    start_reading = True
+                    continue
+                
+                if '$;3999;GXTestDataSectionEnd;;' in line:
+                    break  # Stop processing after this line
+                
+                if start_reading:
+                    match = re.search(r'\$;(\d+);([^;]+);', line)
+                    if match:
+                        code, name = match.groups()
+                        if name not in feature_maps.values():
+                            feature_maps[name] = f"$;{code};{name};"
+        return feature_maps
 
-        feature_maps = {
-            # "Age": "$;6025;Age;",
-            # "BMI": "$;6100;BMI;",
-            # "HR BPM MaxValue": "$;3068;HR BPM",
-            # "HR BPM PredMax": "$;3068;HR BPM",
-            # "Chronotropic Index": "$;3903;Chronotropic Index",
-            # "Height": "$;6020;Height;",
-            # "Weight": "$;6021;Weight;", 
-            # "Race": "$;6010;Race;",
-            # "Hospital Site": "$;6015;Site;",
-            # "Start Exercise": "$;6096;StartExercise;"
-        }
+    def _initialize_feature_maps(self):
+        feature_maps = {}
         with open(os.path.join(self.data_path, './template_sum.template'), 'r') as file:
             for line in file:
                 if '$;999;PFTestDataSectionEnd;;' in line:
@@ -65,6 +74,8 @@ class ProjectStrings:
         feature_maps['HR BPM MaxValue'] = "$;3068;HR BPM"
         feature_maps['HR BPM PredMax'] = "$;3068;HR BPM"
         feature_maps['Chronotropic Index'] = "$;3903;Chronotropic Index"
+        feature_maps.update(self._initialize_gxt_features())
+
         with open('options.txt', 'w') as file:
             for feature in feature_maps:
                 file.write(f"{feature}\n")

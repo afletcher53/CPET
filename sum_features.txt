@@ -1,13 +1,3 @@
-Age
-BMI
-HR BPM MaxValue
-HR BPM PredMax
-Chronotropic Index
-Height
-Weight
-Race
-Site
-StartExercise
 InfoSection
 BreezeVersion
 DateFormat
@@ -25,3 +15,425 @@ BarPressureUnit
 Current Date/Time
 Current Date
 Current Time
+DistanceUnit
+InfoSectionEnd
+DemographicSection
+Account
+Race ID
+Sex
+Race
+SyringeFlag
+PFProtocol
+RequestedDateTime
+VisitDateTime
+Site
+ReviewStatus
+Posted
+PostedDateTime
+DTXName
+Height
+Weight
+BSA
+ArmSpan
+Age
+DoctorID
+DoctorLastName
+DoctorFirstName
+Doctor2ID
+Doctor2LastName
+Doctor2FirstName
+Doctor3ID
+Doctor3LastName
+Doctor3FirstName
+TechID
+TechLastName
+TechFirstName
+Room
+PatUserData
+PatientAuxData01
+PatientAuxData02
+PatientAuxData03
+PatientAuxData04
+PatientAuxData05
+Second ID
+VisitAuxData01
+VisitAuxData02
+VisitAuxData03
+VisitAuxData04
+PackADay
+PackYears
+QuitYears
+YearsSmoke
+Dyspnea
+Cough
+Wheeze
+Tobacco
+Temperature
+BarPressure
+Humidity
+OccExpos
+Recent Illness
+Medications
+Diagnosis
+Comments
+PostComments
+PFConsult
+FVLTest
+SVCTest
+MVVTest
+FRCTest
+DLCOTest
+MIPMEPTest
+StaticTest
+DynamicTest
+DeltaCO2Test
+SBN2Test
+BloodTest
+SiteDivision
+SiteAddress
+SiteCity
+SiteState
+SiteZip
+SiteCountry
+SiteTelephone1
+SiteTelephone2
+SiteFax
+SiteEMail
+GXStartTime
+GXEndTime
+StartExercise
+StartRecovery
+EXProtocol
+EXScriptName
+BMI
+PlethTest
+NICOTest
+CCMCanopyTest
+CCMVentTest
+CCMStandardTest
+BikeTest
+TreadmillTest
+EXConsult
+ExerScript
+DisabilityWorkstationName
+DisabilityHardware
+GXWorkstationName
+GXHardware
+EXFVLWorkstationName
+EXFVLHardware
+LeanBodyMass
+ExFVLTest
+P100Test
+ExerciseDevice
+NICOWorkstationName
+NICOHardware
+GXTotalTime
+GXTotalIncludedTime
+Weight with Units
+Height with Units
+ArmSpan with Units
+LeanBodyMass with Units
+Workstation User Name
+Strap (Raw) Test
+VisitAuxData05
+VisitAuxData06
+VisitAuxData07
+VisitAuxData08
+VisitAuxData09
+VisitAuxData10
+VisitAuxData11
+VisitAuxData12
+VisitAuxData13
+VisitAuxData14
+VisitAuxData15
+VisitAuxData16
+VisitAuxData17
+VisitAuxData18
+VisitAuxData19
+VisitAuxData20
+PatVisitGUID
+Report File Name
+Patient Order ID
+Visit Order ID
+Strap (TGV) Test
+Oscillatory Resistance Test
+VisitDate
+VisitTime
+Pre FVL ATS Codes
+Pre DLCO ATS Codes
+Pre Pleth ATS Codes
+Pre FRC ATS Codes
+Post FVL ATS Codes
+Post DLCO ATS Codes
+Post Pleth ATS Codes
+Post FRC ATS Codes
+PatientAuxData06
+PatientAuxData07
+PatientAuxData08
+PatientAuxData09
+PatientAuxData10
+PatientAuxData11
+PatientAuxData12
+PatientAuxData13
+PatientAuxData14
+PatientAuxData15
+PatientAuxData16
+PatientAuxData17
+PatientAuxData18
+PatientAuxData19
+PatientAuxData20
+PF Predicteds Set Name
+Calibration Date/Time
+GX Predicteds Set Name
+Vendor
+ECG Test
+Text Report File Name
+PEFTest
+PEFComplianceRate
+PEFBestValue
+PEFDayToDayVariability
+PEFTotalDays
+PEFDaysMissed
+Multiple Orders IDs
+Multiple Orders
+ChallengeAgentName
+Calibration Syringe Predicted Volume
+Calibration Expire Flow Volume
+Calibration Inspire Flow Volume
+Version
+PostedDateTime (yyyymmddhhmmss)
+Pre Report File Name
+Pre Text Report File Name
+Sex ID
+Order Visit ID
+Orders
+Order Visit IDs
+CCMFaceTent Test
+OrderProcedures
+OrderModifiers
+OrderCharges
+Order Diagnosis
+BiologicFlag
+Signed
+SignedDateTime
+SignedDateTime (yyyymmddhhmmss)
+SigningDoctorID
+Billings Approved
+BillingsApprovedDateTime
+BillingsApprovedDateTime (yyyymmddhhmmss)
+Ideal Body Weight
+Ideal Body Weight with Units
+Six Minute Walk Test
+SiteCityStateZip
+SiteAddressZip
+DoctorFullName
+DoctorFullName2
+DoctorFullName3
+TechFullName
+SigningDoctorFullName
+VisitAuxData21
+VisitAuxData22
+VisitAuxData23
+VisitAuxData24
+VisitAuxData25
+VisitAuxData26
+VisitAuxData27
+VisitAuxData28
+VisitAuxData29
+VisitAuxData30
+VisitAuxData31
+VisitAuxData32
+VisitAuxData33
+VisitAuxData34
+VisitAuxData35
+VisitAuxData36
+VisitAuxData37
+VisitAuxData38
+VisitAuxData39
+VisitAuxData40
+VisitAuxData41
+VisitAuxData42
+VisitAuxData43
+VisitAuxData44
+VisitAuxData45
+VisitAuxData46
+VisitAuxData47
+VisitAuxData48
+VisitAuxData49
+VisitAuxData50
+VisitAuxData51
+VisitAuxData52
+VisitAuxData53
+VisitAuxData54
+VisitAuxData55
+VisitAuxData56
+VisitAuxData57
+VisitAuxData58
+VisitAuxData59
+VisitAuxData60
+VisitAuxData61
+VisitAuxData62
+VisitAuxData63
+VisitAuxData64
+VisitAuxData65
+VisitAuxData66
+VisitAuxData67
+VisitAuxData68
+VisitAuxData69
+VisitAuxData70
+VisitAuxData71
+VisitAuxData72
+VisitAuxData73
+VisitAuxData74
+VisitAuxData75
+VisitAuxData76
+VisitAuxData77
+VisitAuxData78
+VisitAuxData79
+VisitAuxData80
+VisitAuxData81
+VisitAuxData82
+VisitAuxData83
+VisitAuxData84
+VisitAuxData85
+VisitAuxData86
+VisitAuxData87
+VisitAuxData88
+VisitAuxData89
+VisitAuxData90
+VisitAuxData91
+VisitAuxData92
+VisitAuxData93
+VisitAuxData94
+VisitAuxData95
+VisitAuxData96
+VisitAuxData97
+VisitAuxData98
+VisitAuxData99
+VisitAuxData100
+Pre FVL ATS Grades
+Post FVL ATS Grades
+DemographicSectionEnd
+PFTestDataSection
+HR BPM MaxValue
+HR BPM PredMax
+Chronotropic Index
+VO2_Lmin_extrap L/min
+RatePresPd
+VO2_kg_extrap mL/kg/min
+RER
+VO2HR mL/beat
+Work_TM Watts
+Work_Watts Watts
+METS
+DeltaVEVCO2
+DeltaVEVCO2VO2 Min/L
+DeltaVO2Watts L/Min/Watt
+HRR %
+BR %
+HRR_BPM BPM
+BR_Lmin L/Min
+BagCO2 %CO2
+HRR_NoRest %
+VO2WorkSlope mL/min/watt
+Speed_RPM RPM
+VO2_Delta_Sum mL
+VCO2_Delta_Sum mL
+VO2_VCO2_Delta mL/br
+VO2Pred %
+HRPred %
+VO2_sum mL
+VCO2_sum mL
+VO2_mLbr mL/br
+VCO2_mLbr mL/br
+BagCO2_Jn %CO2
+ExerTime_sec sec
+ExerTime_min min
+VO2_Covar %
+REE_Covar %
+REE_m2 Kcal/dy/m^2
+REE_kg Kcal/kg
+Rq
+REE_day Kcal/day
+REE_adj Kcal/day
+VO2_Lday L/day
+VCO2_Lday L/day
+CHO_gm g/day
+Fat_gm g/day
+CHO_Kcal Kcal/day
+Fat_Kcal Kcal/day
+CHOREE %
+FatREE %
+Kcal_exer KCal/min
+REE_m2hr Kcal/m^2/hr
+REE_hr Kcal/hr
+REEHB %
+REEFl %
+REE_CO2_Covar %
+REE_CO2_day Kcal/day
+VO2_BSA mL/m^2
+VCO2_BSA mL/m^2
+DensityCorrection
+Time_min min
+Time_sec sec
+Ti sec
+Te sec
+Ttot_sec sec
+TiTtot
+Vt_BTPS_mL mL
+VtTi mL/sec
+VE_BTPS L/min
+VE_STPD L/min
+VE_ATPS L/min
+FIO2_Dry Fraction
+FETO2_Fr Fraction
+FETCO2_Fr Fraction
+FETO2 %
+FETCO2 %
+PETO2 mmHg
+PETCO2 mmHg
+FIO2 %
+FICO2 %
+VCO2_mLmin mL/min
+VO2_mLmin mL/min
+VO2_kg mL/kg/min
+VEVO2
+VEVCO2
+TrueO2
+TrueCO2
+FICO2_Dry Fraction
+PECO2 mmHg
+HR BPM
+VE_Norm_Pred L/min
+HR_Filtered BPM
+PaCO2_est mmHg
+VEVO2_MD
+VEVCO2_MD
+VtET mL/sec
+Vd_est mL
+VdVt_est
+Vt_ATPS_mL mL
+Kcal_br KCal/br
+FEO2_mix %
+FECO2_mix %
+Kcal_sum
+Kcal_min KCal/min
+VO2_Lmin L/min
+VCO2_Lmin L/min
+Vt_BTPS_L L
+Vt_ATPS_L L
+RR br/min
+CHO_Kcal_min Kcal/min
+Fat_Kcal_min Kcal/min
+CHO_Kcal_hour Kcal/hour
+Fat_Kcal_hour Kcal/hour
+Aerobic_Energy
+COest L/min
+CardiacIndex L/min/m^2
+VO2VE
+VCO2VE
+VCO2_Covar %
+OUES Slope
+VE/VCO2 Slope
+VO2/Work Slope
+EOV

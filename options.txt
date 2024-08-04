@@ -318,3 +318,122 @@ PFTestDataSection
 HR BPM MaxValue
 HR BPM PredMax
 Chronotropic Index
+VO2_Lmin_extrap L/min
+RatePresPd
+VO2_kg_extrap mL/kg/min
+RER
+VO2HR mL/beat
+Work_TM Watts
+Work_Watts Watts
+METS
+DeltaVEVCO2
+DeltaVEVCO2VO2 Min/L
+DeltaVO2Watts L/Min/Watt
+HRR %
+BR %
+HRR_BPM BPM
+BR_Lmin L/Min
+BagCO2 %CO2
+HRR_NoRest %
+VO2WorkSlope mL/min/watt
+Speed_RPM RPM
+VO2_Delta_Sum mL
+VCO2_Delta_Sum mL
+VO2_VCO2_Delta mL/br
+VO2Pred %
+HRPred %
+VO2_sum mL
+VCO2_sum mL
+VO2_mLbr mL/br
+VCO2_mLbr mL/br
+BagCO2_Jn %CO2
+ExerTime_sec sec
+ExerTime_min min
+VO2_Covar %
+REE_Covar %
+REE_m2 Kcal/dy/m^2
+REE_kg Kcal/kg
+Rq
+REE_day Kcal/day
+REE_adj Kcal/day
+VO2_Lday L/day
+VCO2_Lday L/day
+CHO_gm g/day
+Fat_gm g/day
+CHO_Kcal Kcal/day
+Fat_Kcal Kcal/day
+CHOREE %
+FatREE %
+Kcal_exer KCal/min
+REE_m2hr Kcal/m^2/hr
+REE_hr Kcal/hr
+REEHB %
+REEFl %
+REE_CO2_Covar %
+REE_CO2_day Kcal/day
+VO2_BSA mL/m^2
+VCO2_BSA mL/m^2
+DensityCorrection
+Time_min min
+Time_sec sec
+Ti sec
+Te sec
+Ttot_sec sec
+TiTtot
+Vt_BTPS_mL mL
+VtTi mL/sec
+VE_BTPS L/min
+VE_STPD L/min
+VE_ATPS L/min
+FIO2_Dry Fraction
+FETO2_Fr Fraction
+FETCO2_Fr Fraction
+FETO2 %
+FETCO2 %
+PETO2 mmHg
+PETCO2 mmHg
+FIO2 %
+FICO2 %
+VCO2_mLmin mL/min
+VO2_mLmin mL/min
+VO2_kg mL/kg/min
+VEVO2
+VEVCO2
+TrueO2
+TrueCO2
+FICO2_Dry Fraction
+PECO2 mmHg
+HR BPM
+VE_Norm_Pred L/min
+HR_Filtered BPM
+PaCO2_est mmHg
+VEVO2_MD
+VEVCO2_MD
+VtET mL/sec
+Vd_est mL
+VdVt_est
+Vt_ATPS_mL mL
+Kcal_br KCal/br
+FEO2_mix %
+FECO2_mix %
+Kcal_sum
+Kcal_min KCal/min
+VO2_Lmin L/min
+VCO2_Lmin L/min
+Vt_BTPS_L L
+Vt_ATPS_L L
+RR br/min
+CHO_Kcal_min Kcal/min
+Fat_Kcal_min Kcal/min
+CHO_Kcal_hour Kcal/hour
+Fat_Kcal_hour Kcal/hour
+Aerobic_Energy
+COest L/min
+CardiacIndex L/min/m^2
+VO2VE
+VCO2VE
+VCO2_Covar %
+OUES Slope
+VE/VCO2 Slope
+VO2/Work Slope
+EOV

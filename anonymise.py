@@ -21,21 +21,44 @@ def extract_value(content, identifier):
     part = content.split(identifier)[1].split('$;')[0]
     return part.split(';')[-1].strip()
 
+def extract_gxt_features(content, identifier):
+    gxt_start = content.find('$;1000;GXTestDataSection;')
+    gxt_end = content.find('$;3999;GXTestDataSectionEnd;;')
+    if gxt_start == -1 or gxt_end == -1:
+        print("Warning: GXT section markers not found in the content.")
+        return {}
+    content = content[gxt_start:gxt_end]
+    lines = content.strip().split('\n')
+    header = ['Combined'] + lines[0].split(';')[3:]
+    data = []
+    for line in lines[1:]:
+        parts = line.split(';')
+        combined = ';'.join(parts[:3]) + ';' # Concatenate first 3 columns
+        values = [combined] + parts[3:]
+        data.append(values)
+    df = pd.DataFrame(data, columns=header)
+    for column in df.columns[1:]:
+        df[column] = pd.to_numeric(df[column], errors='ignore')
+    df.set_index('Combined', inplace=True)
+    row = df.loc[identifier]
+    del df
+    row_dict = row.to_dict()
+    row_list = [(key, value) for key, value in row_dict.items()]
+    return row_list
+
+
+
 def process_file(file_path, features_map_to_extract):
     with open(file_path, 'r') as file:
         content = file.read()
     
     data = {}
-    
-    gxt_features = {
-        'HR BPM MaxValue': lambda c, i: c.split(i)[1].split('\n')[0].split(';')[3].strip(),
-        'HR BPM PredMax': lambda c, i: c.split(i)[1].split('\n')[0].split(';')[1].strip()
-    }
-    
     for feature, identifier in features_map_to_extract.items():
         if identifier in content:
-            if feature in gxt_features:
-                data[feature] = gxt_features[feature](content, identifier)
+            if feature in Strings.gxt_features:
+                values = extract_gxt_features(content, identifier)
+                for column, value in values:
+                    data[f"{feature} {column}"] = value
             else:
                 data[feature] = extract_value(content, identifier)
     
