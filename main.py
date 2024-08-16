@@ -8,6 +8,7 @@ import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
 from Classes.integrity_checks import Integrity_checks
 import gather_sheffield_data
+import gather_york_data
 import init_project
 import link_files
 import anonymise
@@ -55,6 +56,37 @@ def main():
     #     logger.info("Linked data file found. Using existing file.")
 
     # anonymise.main()
+
+    # show missing BXB files
+
+    # calculate how many of these files are "missing" bxb data, i.e. the file exists however there is less than 10 lines of data
+    # missing_files = []
+    # for file in files:
+    #     file_name = file.split(".")[1]
+    #     file_name = file_name.split("/")[-1]
+    #     file_name = file_name + "_bxb_data.csv"
+
+    #     data = open(os.path.join(ps.anonymised, file_name), "r").read()
+
+    #     # Step 1: Remove leading '$' and strip whitespace
+    #     cleaned_data = re.sub(r'^\$', '', data, flags=re.MULTILINE).strip()
+
+    #     # Step 2: Split data into rows based on newlines
+    #     rows = cleaned_data.split('\n')
+
+    #     if len(rows) < 10:
+    #         missing_files.append(file)
+
+    # print(f"Number of missing files: {len(missing_files)}")
+    # # order the missing files by name.sum which is numerical 
+    # sorted_file_paths = sorted(missing_files, key=lambda x: int(x.split('/')[-1].split('.')[0]))
+
+    # for file in sorted_file_paths:
+    #     print(file)
+    # print(f"Number of files to process: {len(files) - len(missing_files)}")
+    # gather_york_data.main()
     gather_sheffield_data.main()
+
+    
 
 main()

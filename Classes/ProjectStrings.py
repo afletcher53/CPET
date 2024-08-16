@@ -11,6 +11,8 @@ class ProjectStrings:
             self.data_path = "./data/"
             self.cpet_data = os.path.join(self.data_path, 'cpet raw')
             self.anonymised = os.path.join(self.data_path, 'anonymised')
+            self.york = os.path.join(self.anonymised, 'york')
+            self.sheffield = os.path.join(self.anonymised, 'sheffield')
             self.cpet_db = os.path.join(
                 self.data_path, 'CPETdb.xlsx')
             self.linked_data = os.path.join(
@@ -21,6 +23,9 @@ class ProjectStrings:
             self.anonymised_linked_data_with_db = os.path.join(
                 self.data_path, './anonymised/linked data with db.csv')
             self.sum_features = "./sum_features.txt"
+            self.york_flat = os.path.join(self.york, 'flat_output_final.csv')
+            self.sheffield_flat = os.path.join(
+                self.sheffield, 'flat_output_final.csv')
             self.gxt_features = self._initialize_gxt_features()
             self._feature_maps = self._initialize_feature_maps()
             self._spawn_directories()
@@ -37,6 +42,8 @@ class ProjectStrings:
             os.mkdir(self.logs)
         if not os.path.exists(self.anonymised):
             os.mkdir(self.anonymised)
+        if not os.path.exists(self.york):
+            os.mkdir(self.york)
 
     def _initialize_gxt_features(self):
         feature_maps = {}
