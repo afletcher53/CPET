@@ -1,4 +1,7 @@
 import os
+import re
+from Classes.ProjectStrings import ProjectStrings
+import pandas as pd
 
 
 def get_files(folder, extension):
@@ -16,386 +19,133 @@ def get_files(folder, extension):
 
     return files
 
+def calculate_phase_of_breath(file, ps):
+    """Calculate the phase of the breath for each row in the file."""
+    
+    file_name = file.split(".")[1]
+    file_name = file_name.split("/")[-1]
+    file_name = file_name + "_bxb_data.csv"
 
-def extract_gxt_data(file):
-    """Extract the GXT data from a sum file."""
+    data = open(os.path.join(ps.anonymised, file_name), "r").read()
 
-    with open(file, "r") as file:
-        content = file.read()
+    # Step 1: Remove leading '$' and strip whitespace
+    cleaned_data = re.sub(r'^\$', '', data, flags=re.MULTILINE).strip()
 
-    gxt_start = content.find("$;1000;GXTestDataSection;")
-    gxt_end = content.find("$;3999;GXTestDataSectionEnd;;")
+    # Step 2: Split data into rows based on newlines
+    rows = cleaned_data.split('\n')
 
-    if gxt_start == -1 or gxt_end == -1:
-        print("Warning: GXT section markers not found in the content.")
-        return {}
-    content = content[gxt_start:gxt_end]
-    lines = content.strip().split("\n")
-    header = ["Combined"] + lines[0].split(";")[3:]
+    # Step 3: Split each row into columns based on commas
+    data_list = [row.split(',') for row in rows]
 
-    import pandas as pd
+    # Read the data into a DataFrame
+    df = pd.DataFrame(data_list)
 
-    data = []
-    for line in lines[1:]:
-        parts = line.split(";")
-        combined = ";".join(parts[:3]) + ";"
-        values = [combined] + parts[3:]
-        data.append(values)
-    df = pd.DataFrame(data, columns=header)
+    # Drop all rows in column 0 that contain '"' (quotes)
+    df = df[~df[0].str.contains('"')]
 
-    for column in df.columns[1:]:
-        df[column] = pd.to_numeric(df[column], errors="coerce")
-    df.set_index("Combined", inplace=True)
+    # Drop column 0
+    df = df.drop(columns=[0])
 
-    df["identifier"] = df.index.str.split(";").str[-2]
+    # Drop row 0 (header row in this context)
+    df = df.drop([0])
 
-    cols = df.columns.tolist()
-    cols = cols[-1:] + cols[:-1]
-    df = df[cols]
+    # Rename specific columns
+    df = df.rename(columns={2: "Breath Number", 9: "Load", 20: 'RPM'})
 
-    df.set_index("identifier", inplace=True)
+    # drop column 1
+    df = df.drop(columns=[1])
 
-    keep = [
-        "VO2_mLmin mL/min",
-        "VCO2_mLmin mL/min",
-        "VO2_kg mL/kg/min",
-        "VEVO2",
-        "VEVCO2",
-        "HR BPM",
-        "HR_Filtered BPM",
-        "HRR %",
-        "VO2HR mL/beat",
-        "Work_Watts Watts",
-        "VO2WorkSlope mL/min/watt",
-        "Ti sec",
-        "Te sec",
-        "VtET mL/sec",
-        "VtTi mL/sec",
-        "Vd_est mL",
-        "VdVt_est",
-        "HRPred %",
-        "VO2Pred %",
-    ]
+    # drop the first two rows
+    df = df.drop([2, 4])
 
-    existing_rows = [row for row in keep if row in df.index]
+    # conver all load and RPM values to numeric
+    df['Load'] = pd.to_numeric(df['Load'])
+    df['RPM'] = pd.to_numeric(df['RPM'])   
 
-    col_keep = [
-        "PredMax",
-        "Rest",
-        "AT",
-        "VO2Max",
-        "WorkMax",
-        "MaxValue",
-        "%VO2Max/Pred",
-        "%WorkMax/Pred",
-        "%AT/VO2Max",
-        "%AT/Pred",
-        "%AT/WorkMax",
-    ]
-    exisiting_cols = [col for col in col_keep if col in df.columns]
-    df = df.loc[existing_rows, exisiting_cols]
+    # Calculate the phase of the breath. If RPM > 1 and Load = 0, pedalling with no load on bike, phase = 1, if RPM = 0 and load < 25 then phase = 0 (resting)
+    # if RPM > 1 and Load > 1 start of test, phase = 2, if RPM = 0 and Load > 25 then phase = 3 (end of test)
+    df['Phase'] = -1
+    df.loc[(df['RPM'] == 0) & (df['Load'] < 25), 'Phase'] = 0
+    df.loc[(df['RPM'] > 0) & (df['Load'] == 0), 'Phase'] = 1
+    df.loc[(df['RPM'] > 0) & (df['Load'] > 0), 'Phase'] = 2
+
+
+
+    try:
+        # find the index of the peak load
+        peak_load_index = df['Load'].idxmax()
+
+        # for all phase 2 values after the peak load index, set the phase to 3
+        df.loc[(df['Phase'] == 2) & (df.index > peak_load_index), 'Phase'] = 3
+        
+        # drop all columns except for breath number, load, RPM and phase
+        df = df[['Breath Number', 'Load', 'RPM', 'Phase']]
+        # duration of test is time from first phase 2 to first phase 3
+        phase_2 = df[df['Phase'] == 2].index[0]
+        phase_3 = df[df['Phase'] == 3].index[0]
+        duration = phase_3 - phase_2
+        print(f"Duration of test: {duration} breaths")
+
+        # assert all of the phases are set
+        assert -1 not in df['Phase'].values
+
+
+        output_file = file_name.split(".")[0] + "_phase_of_breath.csv"
+        output_file = os.path.join(ps.sheffield, output_file)
+        df.to_csv(output_file, index=False)
+    except:
+    
+        if df['RPM'].sum() == 0:
+            print(f"RPM column is full of 0s: {file_name}")
+
+        # check if phase 3 is missing
+        if 3 not in df['Phase'].values:
+            print(f"Phase 3 is missing: {file_name}")
+        else:
+            print(f"Error processing file: {file_name}")
     return df
-
-
-def extract_value(file, identifier):
-    with open(file, "r") as file:
-        content = file.read()
-    part = content.split(identifier)[1].split("$;")[0]
-    return part.split(";")[-1].strip()
-
-
-def extract_summaries():
-    import pandas as pd
-    import warnings
-
-    warnings.filterwarnings("ignore")
-    sum_files = get_files("data/anonymised", "sum")
-
-    for file in sum_files:
-        print(f"Extracting GXT data from {file}")
-
-        df = extract_gxt_data(file)
-
-        OUES = float(extract_value(file, "$;3900;OUES Slope;"))
-        VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
-        VO2_WORK_SLOPE = float(extract_value(file, "$;3902;VO2/Work Slope;"))
-        CHRONOTROPIC_INDEX = float(extract_value(file, "$;3903;Chronotropic Index;"))
-        EXPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
-        HEIGHT = extract_value(file, "$;6020;Height;;")
-        WEIGHT = extract_value(file, "$;6021;Weight;;")
-        SEX = extract_value(file, "$;6009;Sex;")
-        BSA = extract_value(file, "$;6022;BSA;;")
-
-        df.loc["OUES"] = [OUES] + [None] * (df.shape[1] - 1)
-        df.loc["VE/VCO2 Slope"] = [VE_VO2_SLOPE] + [None] * (df.shape[1] - 1)
-        df.loc["VO2/Work Slope"] = [VO2_WORK_SLOPE] + [None] * (df.shape[1] - 1)
-        df.loc["Chronotropic Index"] = [CHRONOTROPIC_INDEX] + [None] * (df.shape[1] - 1)
-        df.loc["EXProtocol"] = [EXPROTOCOL] + [None] * (df.shape[1] - 1)
-        df.loc["Height"] = [HEIGHT] + [None] * (df.shape[1] - 1)
-        df.loc["Weight"] = [WEIGHT] + [None] * (df.shape[1] - 1)
-        df.loc["Sex"] = [SEX] + [None] * (df.shape[1] - 1)
-        df.loc["BSA"] = [BSA] + [None] * (df.shape[1] - 1)
-
-        df = df.loc[~df.index.duplicated(keep="first")]
-
-        file = file.split("/")[-1].split(".")[0]
-        file = os.path.join("./data/anonymised/york", file)
-
-        df.to_csv(f"{file}.csv")
-
-
-def generate_flat_output():
-    files = get_files("data/anonymised/york", "csv")
-    import pandas as pd
-    from tqdm import tqdm
-
-    all_rows = []
-
-    for idx, file in enumerate(tqdm(files, desc="Processing files")):
-        df = pd.read_csv(file)
-
-        index = df.iloc[:, 0].values
-        columns = df.columns
-
-        headers = [
-            f"{i} @ {c}"
-            for i in index
-            for c in columns
-            if c
-            not in [
-                "identifier",
-                "OUES",
-                "VE/VCO2 Slope",
-                "VO2/Work Slope",
-                "Chronotropic Index",
-                "EXProtocol",
-                "Height",
-                "Weight",
-                "Sex",
-                "BSA",
-            ]
-        ]
-
-        headers += [
-            "OUES",
-            "VE/VCO2 Slope",
-            "VO2/Work Slope",
-            "Chronotropic Index",
-            "EXProtocol",
-            "Height",
-            "Weight",
-            "Sex",
-            "BSA",
-        ]
-
-        row_data = {}
-
-        for i in index:
-            if i in [
-                "OUES",
-                "VE/VCO2 Slope",
-                "VO2/Work Slope",
-                "Chronotropic Index",
-                "Height",
-                "Weight",
-                "Sex",
-                "BSA",
-                "EXProtocol",
-            ]:
-                continue
-            for c in columns:
-                if c not in [
-                    "identifier",
-                ]:
-                    row_data[f"{i} @ {c}"] = df.loc[
-                        df.iloc[:, 0].values == i, c
-                    ].values[0]
-
-                    try:
-                        row_data[f"{i} @ {c}"] = float(row_data[f"{i} @ {c}"])
-                    except:
-                        pass
-
-        for var in [
-            "OUES",
-            "VE/VCO2 Slope",
-            "VO2/Work Slope",
-            "Chronotropic Index",
-            "EXProtocol",
-            "Height",
-            "Weight",
-            "Sex",
-            "BSA",
-        ]:
-            
-            row = df.loc[df["identifier"] == var]
-            
-            value = row.iloc[0, 1]
-
-            
-            try:
-                value = float(value)
-            except:
-                pass
-
-            row_data[var] = value
-            
-            row_data["research id"] = float(file.split("/")[-1].split(".")[0])
-        
-        all_rows.append(row_data)
-        
-        if idx > 0 and idx % 50 == 0:
-            headers = headers + ["research id"]
-            
-            df_flat = pd.DataFrame(all_rows, columns=headers)
-
-            
-            columns_to_drop = [
-                'HRR % @ PredMax',
-                'Te sec @ %AT/Pred',
-                'VtTi mL/sec @ %AT/Pred',
-                "VdVt_est @ PredMax",
-                "VdVt_est @ %VO2Max/Pred",
-                "VdVt_est @ %WorkMax/Pred",
-                "VdVt_est @ %AT/Pred",
-                'VtET mL/sec @ PredMax',
-                "HRPred % @ PredMax",
-                "HRPred % @ %VO2Max/Pred",
-                "HRPred % @ %WorkMax/Pred",
-                "HRPred % @ %AT/Pred",
-                "VO2Pred % @ PredMax",
-                "VO2Pred % @ %VO2Max/Pred",
-                "VO2Pred % @ %WorkMax/Pred",
-                "VO2Pred % @ %AT/Pred",
-                "Vd_est mL @ %AT/Pred",
-                "Vd_est mL @ %WorkMax/Pred",
-                "Vd_est mL @ %VO2Max/Pred",
-                "Vd_est mL @ PredMax",
-                "VtTi mL/sec @ %WorkMax/Pred",
-                "VtTi mL/sec @ %VO2Max/Pred",
-                "VtTi mL/sec @ PredMax",
-                "VtET mL/sec @ %AT/Pred",
-                "VtET mL/sec @ %WorkMax/Pred",
-                "VtET mL/sec @ %VO2Max/Pred",
-                "Te sec @ %WorkMax/Pred",
-                "Te sec @ %VO2Max/Pred",
-                "Te sec @ PredMax",
-                "Ti sec @ %AT/Pred",
-                "Ti sec @ %WorkMax/Pred",
-                "Ti sec @ %VO2Max/Pred",
-                "Ti sec @ PredMax",
-                'HRR % @ %VO2Max/Pred',
-                "VO2WorkSlope mL/min/watt @ %AT/Pred",
-                "VO2WorkSlope mL/min/watt @ %WorkMax/Pred",
-                "VO2WorkSlope mL/min/watt @ %VO2Max/Pred",
-                "2HRR % @ %VO2Max/Pred",
-                "Work_Watts Watts @ Rest",
-                "VO2WorkSlope mL/min/watt @ PredMax",
-                "VO2WorkSlope mL/min/watt @ Rest",
-                "HRR % @ %WorkMax/Pred",
-                "HRR % @ %AT/Pred",
-                "OUES @",
-                "VE/VCO2 Slope @",
-                "VO2/Work Slope @",
-                "Chronotropic Index @",
-                "EXProtocol @",
-                "Height @",
-                "Weight @",
-                "BSA @",
-                "Sex @",
-            ]
-            
-            df_flat = df_flat.loc[
-                :, ~df_flat.columns.str.startswith(tuple(columns_to_drop))
-            ]
-
-            
-            if os.path.exists("data/anonymised/york/flat_output_final.csv"):
-                existing = pd.read_csv("data/anonymised/york/flat_output_final.csv")
-                existing = pd.concat([existing, df_flat])
-                
-                existing = existing.sort_values("research id")
-                existing.to_csv(
-                    "data/anonymised/york/flat_output_final.csv", index=False
-                )
-            else:
-                df_flat.to_csv(
-                    "data/anonymised/york/flat_output_final.csv", index=False
-                )
-                
-            all_rows = []
-
-    df_flat = pd.DataFrame(all_rows, columns=headers)
-
-    columns_to_drop = [
-                'HRR % @ PredMax',
-                'Te sec @ %AT/Pred',
-                'VtTi mL/sec @ %AT/Pred',
-                "VdVt_est @ PredMax",
-                "VdVt_est @ %VO2Max/Pred",
-                "VdVt_est @ %WorkMax/Pred",
-                "VdVt_est @ %AT/Pred",
-                'VtET mL/sec @ PredMax',
-                "HRPred % @ PredMax",
-                "HRPred % @ %VO2Max/Pred",
-                "HRPred % @ %WorkMax/Pred",
-                "HRPred % @ %AT/Pred",
-                "VO2Pred % @ PredMax",
-                "VO2Pred % @ %VO2Max/Pred",
-                "VO2Pred % @ %WorkMax/Pred",
-                "VO2Pred % @ %AT/Pred",
-                "Vd_est mL @ %AT/Pred",
-                "Vd_est mL @ %WorkMax/Pred",
-                "Vd_est mL @ %VO2Max/Pred",
-                "Vd_est mL @ PredMax",
-                "VtTi mL/sec @ %WorkMax/Pred",
-                "VtTi mL/sec @ %VO2Max/Pred",
-                "VtTi mL/sec @ PredMax",
-                "VtET mL/sec @ %AT/Pred",
-                "VtET mL/sec @ %WorkMax/Pred",
-                "VtET mL/sec @ %VO2Max/Pred",
-                "Te sec @ %WorkMax/Pred",
-                "Te sec @ %VO2Max/Pred",
-                "Te sec @ PredMax",
-                "Ti sec @ %AT/Pred",
-                "Ti sec @ %WorkMax/Pred",
-                "Ti sec @ %VO2Max/Pred",
-                "Ti sec @ PredMax",
-                'HRR % @ %VO2Max/Pred',
-                "VO2WorkSlope mL/min/watt @ %AT/Pred",
-                "VO2WorkSlope mL/min/watt @ %WorkMax/Pred",
-                "VO2WorkSlope mL/min/watt @ %VO2Max/Pred",
-                "2HRR % @ %VO2Max/Pred",
-                "Work_Watts Watts @ Rest",
-                "VO2WorkSlope mL/min/watt @ PredMax",
-                "VO2WorkSlope mL/min/watt @ Rest",
-                "HRR % @ %WorkMax/Pred",
-                "HRR % @ %AT/Pred",
-                "OUES @",
-                "VE/VCO2 Slope @",
-                "VO2/Work Slope @",
-                "Chronotropic Index @",
-                "EXProtocol @",
-                "Height @",
-                "Weight @",
-                "BSA @",
-                "Sex @",
-            ]
-            
-    df_flat = df_flat.loc[
-                :, ~df_flat.columns.str.startswith(tuple(columns_to_drop))
-            ]
-    existing = pd.read_csv("data/anonymised/york/flat_output_final.csv")
-    existing = pd.concat([existing, df_flat])
-    existing.to_csv("data/anonymised/york/flat_output_final.csv", index=False)
-
-    return "data/anonymised/york/flat_output_final.csv"
-
-
 def main():
-    extract_summaries()
-    generate_flat_output()
+
+    
+    # for each sum file, lets calculate the phase of the breath
+    ps = ProjectStrings()
+    files = get_files(ps.anonymised, ".sum")
+
+    # calculate how many of these files are "missing" bxb data, i.e. the file exists however there is less than 10 lines of data
+    missing_files = []
+    for file in files:
+        file_name = file.split(".")[1]
+        file_name = file_name.split("/")[-1]
+        file_name = file_name + "_bxb_data.csv"
+
+        data = open(os.path.join(ps.anonymised, file_name), "r").read()
+
+        # Step 1: Remove leading '$' and strip whitespace
+        cleaned_data = re.sub(r'^\$', '', data, flags=re.MULTILINE).strip()
+
+        # Step 2: Split data into rows based on newlines
+        rows = cleaned_data.split('\n')
+
+        if len(rows) < 10:
+            missing_files.append(file)
+
+    print(f"Number of missing files: {len(missing_files)}")
+    # order the missing files by name.sum which is numerical 
+    sorted_file_paths = sorted(missing_files, key=lambda x: int(x.split('/')[-1].split('.')[0]))
+
+    for file in sorted_file_paths:
+        print(file)
+    print(f"Number of files to process: {len(files) - len(missing_files)}")
+
+    # remove the missing files from the list of files to process
+    files = [file for file in files if file not in missing_files]
+
+ 
+    for file in files:
+        calculate_phase_of_breath(file, ps)
 
 
-if __name__ == "__main__":
-    main()
+
+
+
+main()
