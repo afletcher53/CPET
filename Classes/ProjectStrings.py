@@ -26,6 +26,15 @@ class ProjectStrings:
             self.york_flat = os.path.join(self.york, 'flat_output_final.csv')
             self.sheffield_flat = os.path.join(
                 self.sheffield, 'flat_output_final.csv')
+            self.missing_bxb = os.path.join(self.data_path, 'missing_bxb.txt')
+            self.missing_phase_3 = os.path.join(
+                self.data_path, 'missing_phase_3.txt')
+            self.missing_rpm = os.path.join(self.data_path, 'missing_rpm.txt')
+            self.missing_no_reason = os.path.join(
+                self.data_path, 'missing_no_reason.txt')
+            self.missing_files = os.path.join(
+                self.data_path, 'missing_files.txt')
+
             self.gxt_features = self._initialize_gxt_features()
             self._feature_maps = self._initialize_feature_maps()
             self._spawn_directories()
