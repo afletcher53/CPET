@@ -7,8 +7,8 @@ import os
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
 from Classes.integrity_checks import IntegrityChecks
-import gather_sheffield_data
-import gather_york_data
+import gather_york_data_dl
+import gather_york_data_traditional
 import init_project
 import link_files
 import anonymise
@@ -46,10 +46,13 @@ def main():
     #     else:
     #         logger.info("Project initalised with correct file placements.")
 
-    checks = IntegrityChecks()
-    checks.check_anon_sums(save=True)
-    # gather_york_data.main()
-    # gather_sheffield_data.main()
+    # checks = IntegrityChecks()
+    # checks.check_anon_sums(save=True)
+    logger.info("Starting data extraction.")
+    logger.info("Gathering York data for traditional analysis.")
+    gather_york_data_traditional.main()
+    logger.info("Gathering York data for DL analysis.")
+    gather_york_data_dl.main()
     
 
 main()
