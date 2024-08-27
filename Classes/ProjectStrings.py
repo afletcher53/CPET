@@ -12,6 +12,8 @@ class ProjectStrings:
             self.cpet_data = os.path.join(self.data_path, 'cpet raw')
             self.anonymised = os.path.join(self.data_path, 'anonymised')
             self.york = os.path.join(self.anonymised, 'york')
+            self.york_traditional = os.path.join(self.york, 'traditional')
+            self.york_dl = os.path.join(self.york, 'dl')
             self.sheffield = os.path.join(self.anonymised, 'sheffield')
             self.cpet_db = os.path.join(
                 self.data_path, 'CPETdb.xlsx')
@@ -23,7 +25,7 @@ class ProjectStrings:
             self.anonymised_linked_data_with_db = os.path.join(
                 self.data_path, './anonymised/linked data with db.csv')
             self.sum_features = "./sum_features.txt"
-            self.york_flat = os.path.join(self.york, 'flat_output_final.csv')
+            self.york_flat = os.path.join(self.york_traditional, 'flat_output_final.csv')
             self.sheffield_flat = os.path.join(
                 self.sheffield, 'flat_output_final.csv')
             self.missing_bxb = os.path.join(self.data_path, 'missing_bxb.txt')
@@ -53,6 +55,10 @@ class ProjectStrings:
             os.mkdir(self.anonymised)
         if not os.path.exists(self.york):
             os.mkdir(self.york)
+        if not os.path.exists(self.york_traditional):
+            os.mkdir(self.york_traditional)
+        if not os.path.exists(self.york_dl):
+            os.mkdir(self.york_dl)
 
     def _initialize_gxt_features(self):
         feature_maps = {}
@@ -101,7 +107,32 @@ class ProjectStrings:
     def feature_maps(self):
         return self._feature_maps
 
-    
+    @property
+    def basic_feature_maps(self):
+        # New dictionary to store the extracted values
+        new_dict = {}
+
+        # Iterate over each key-value pair in the original dictionary
+        for key, value in self.feature_maps.items():
+            # Split the value by ';'
+            parts = value.split(';')
+            if len(parts) > 1:
+                # Extract the number between the first two semicolons
+                number = parts[1]
+                # Update the new dictionary with the key and extracted number
+                new_dict[key] = number
+
+        # Print the new dictionary to see the result
+
+        # add some manual mappings
+        new_dict['Breath'] = '115'
+        
+        new_dict['VO2_kg_extrap mL/kg/min'] = '1048'
+        new_dict['VO2WorkSlope mL/min/watt'] = '1124'
+        new_dict['DeltaVO2Watts L/Min/Watt'] = '1105'
+        new_dict['Speed_RPM RPM'] = '1132'
+        new_dict['ExerTime_sec sec'] = '1195'
+        return new_dict
     def wanted_feature_maps(self, features: list):
         # validate the features
         for feature in features:

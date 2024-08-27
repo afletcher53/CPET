@@ -163,7 +163,12 @@ class IntegrityChecks:
             df = df.dropna()
 
             df = df.reset_index(drop=True)
+            # phase 0 = No RPM, No Load
+            # phase 1 = RPM, No Load
+            # phase 2 = RPM, Load
+            # phase 3 = RPM, Load after peak load
 
+            df = df.drop(0) # drop the first row as it is not a breath
             df["Phase"] = 0
             df.loc[(df["RPM"] > 0) & (df["Load"] == 0), "Phase"] = 1
             df.loc[(df["RPM"] > 0) & (df["Load"] > 0), "Phase"] = 2
@@ -171,7 +176,6 @@ class IntegrityChecks:
             df.loc[(df["Phase"] == 2) & (df.index > peak_load_index), "Phase"] = 3
             
 
-            df = df.drop(0) # drop the first row as it is not a breath
 
             if df["RPM"].sum() == 0:
                 missing_rpm.append(file_name)

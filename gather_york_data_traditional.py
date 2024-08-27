@@ -1,7 +1,8 @@
 import os
 
 from Classes.ProjectStrings import ProjectStrings
-
+import warnings
+from tqdm import tqdm
 
 def get_files(folder, extension):
     """Get all files in a folder with a given extension."""
@@ -104,46 +105,80 @@ def extract_value(file, identifier):
         content = file.read()
     part = content.split(identifier)[1].split("$;")[0]
     return part.split(";")[-1].strip()
-
-
 def extract_summaries(ps):
-    import pandas as pd
-    import warnings
-
     warnings.filterwarnings("ignore")
-    sum_files = get_files(ps.anonymised, "sum")
+    sum_files = list(get_files(ps.anonymised, "sum"))
+    
+    with tqdm(sum_files, desc="Extracting GXT data", unit="file") as pbar:
+        for file in pbar:
+            # Update the description with the current file name
+            pbar.set_description(f"Processing {os.path.basename(file)}")
+            
+            df = extract_gxt_data(file)
+            OUES = float(extract_value(file, "$;3900;OUES Slope;"))
+            VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
+            VO2_WORK_SLOPE = float(extract_value(file, "$;3902;VO2/Work Slope;"))
+            CHRONOTROPIC_INDEX = float(extract_value(file, "$;3903;Chronotropic Index;"))
+            EXPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
+            HEIGHT = extract_value(file, "$;6020;Height;;")
+            WEIGHT = extract_value(file, "$;6021;Weight;;")
+            SEX = extract_value(file, "$;6009;Sex;")
+            BSA = extract_value(file, "$;6022;BSA;;")
+            
+            df.loc["OUES"] = [OUES] + [None] * (df.shape[1] - 1)
+            df.loc["VE/VCO2 Slope"] = [VE_VO2_SLOPE] + [None] * (df.shape[1] - 1)
+            df.loc["VO2/Work Slope"] = [VO2_WORK_SLOPE] + [None] * (df.shape[1] - 1)
+            df.loc["Chronotropic Index"] = [CHRONOTROPIC_INDEX] + [None] * (df.shape[1] - 1)
+            df.loc["EXProtocol"] = [EXPROTOCOL] + [None] * (df.shape[1] - 1)
+            df.loc["Height"] = [HEIGHT] + [None] * (df.shape[1] - 1)
+            df.loc["Weight"] = [WEIGHT] + [None] * (df.shape[1] - 1)
+            df.loc["Sex"] = [SEX] + [None] * (df.shape[1] - 1)
+            df.loc["BSA"] = [BSA] + [None] * (df.shape[1] - 1)
+            
+            df = df.loc[~df.index.duplicated(keep="first")]
+            
+            output_file = os.path.basename(file).split(".")[0]
+            output_path = os.path.join(ps.york_traditional, f"{output_file}.csv")
+            df.to_csv(output_path)
 
-    for file in sum_files:
-        print(f"Extracting GXT data from {file}")
+# def extract_summaries(ps):
 
-        df = extract_gxt_data(file)
+#     import warnings
 
-        OUES = float(extract_value(file, "$;3900;OUES Slope;"))
-        VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
-        VO2_WORK_SLOPE = float(extract_value(file, "$;3902;VO2/Work Slope;"))
-        CHRONOTROPIC_INDEX = float(extract_value(file, "$;3903;Chronotropic Index;"))
-        EXPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
-        HEIGHT = extract_value(file, "$;6020;Height;;")
-        WEIGHT = extract_value(file, "$;6021;Weight;;")
-        SEX = extract_value(file, "$;6009;Sex;")
-        BSA = extract_value(file, "$;6022;BSA;;")
+#     warnings.filterwarnings("ignore")
+#     sum_files = get_files(ps.anonymised, "sum")
 
-        df.loc["OUES"] = [OUES] + [None] * (df.shape[1] - 1)
-        df.loc["VE/VCO2 Slope"] = [VE_VO2_SLOPE] + [None] * (df.shape[1] - 1)
-        df.loc["VO2/Work Slope"] = [VO2_WORK_SLOPE] + [None] * (df.shape[1] - 1)
-        df.loc["Chronotropic Index"] = [CHRONOTROPIC_INDEX] + [None] * (df.shape[1] - 1)
-        df.loc["EXProtocol"] = [EXPROTOCOL] + [None] * (df.shape[1] - 1)
-        df.loc["Height"] = [HEIGHT] + [None] * (df.shape[1] - 1)
-        df.loc["Weight"] = [WEIGHT] + [None] * (df.shape[1] - 1)
-        df.loc["Sex"] = [SEX] + [None] * (df.shape[1] - 1)
-        df.loc["BSA"] = [BSA] + [None] * (df.shape[1] - 1)
+#     for file in sum_files:
+#         print(f"Extracting GXT data from {file}")
 
-        df = df.loc[~df.index.duplicated(keep="first")]
+#         df = extract_gxt_data(file)
 
-        file = file.split("/")[-1].split(".")[0]
-        file = os.path.join("./data/anonymised/york", file)
+#         OUES = float(extract_value(file, "$;3900;OUES Slope;"))
+#         VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
+#         VO2_WORK_SLOPE = float(extract_value(file, "$;3902;VO2/Work Slope;"))
+#         CHRONOTROPIC_INDEX = float(extract_value(file, "$;3903;Chronotropic Index;"))
+#         EXPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
+#         HEIGHT = extract_value(file, "$;6020;Height;;")
+#         WEIGHT = extract_value(file, "$;6021;Weight;;")
+#         SEX = extract_value(file, "$;6009;Sex;")
+#         BSA = extract_value(file, "$;6022;BSA;;")
 
-        df.to_csv(f"{file}.csv")
+#         df.loc["OUES"] = [OUES] + [None] * (df.shape[1] - 1)
+#         df.loc["VE/VCO2 Slope"] = [VE_VO2_SLOPE] + [None] * (df.shape[1] - 1)
+#         df.loc["VO2/Work Slope"] = [VO2_WORK_SLOPE] + [None] * (df.shape[1] - 1)
+#         df.loc["Chronotropic Index"] = [CHRONOTROPIC_INDEX] + [None] * (df.shape[1] - 1)
+#         df.loc["EXProtocol"] = [EXPROTOCOL] + [None] * (df.shape[1] - 1)
+#         df.loc["Height"] = [HEIGHT] + [None] * (df.shape[1] - 1)
+#         df.loc["Weight"] = [WEIGHT] + [None] * (df.shape[1] - 1)
+#         df.loc["Sex"] = [SEX] + [None] * (df.shape[1] - 1)
+#         df.loc["BSA"] = [BSA] + [None] * (df.shape[1] - 1)
+
+#         df = df.loc[~df.index.duplicated(keep="first")]
+
+#         file = file.split("/")[-1].split(".")[0]
+#         file = os.path.join(ps.york_traditional, file)
+
+#         df.to_csv(f"{file}.csv")
 
 
 def generate_flat_output(ps):
