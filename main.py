@@ -50,9 +50,9 @@ def main():
     # checks.check_anon_sums(save=True)
     logger.info("Starting data extraction.")
     logger.info("Gathering York data for traditional analysis.")
-    gather_york_data_traditional.main()
+    # gather_york_data_traditional.main()
     logger.info("Gathering York data for DL analysis.")
     gather_york_data_dl.main()
-    
+
 
 main()

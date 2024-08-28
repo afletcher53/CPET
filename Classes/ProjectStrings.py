@@ -25,7 +25,10 @@ class ProjectStrings:
             self.anonymised_linked_data_with_db = os.path.join(
                 self.data_path, './anonymised/linked data with db.csv')
             self.sum_features = "./sum_features.txt"
-            self.york_flat = os.path.join(self.york_traditional, 'flat_output_final.csv')
+            self.york_flat = os.path.join(
+                self.york_traditional, 'flat_output_final.csv')
+            self.york_binned_normalised = os.path.join(
+                self.york_dl, 'binned_normalised')
             self.sheffield_flat = os.path.join(
                 self.sheffield, 'flat_output_final.csv')
             self.missing_bxb = os.path.join(self.data_path, 'missing_bxb.txt')
@@ -59,6 +62,8 @@ class ProjectStrings:
             os.mkdir(self.york_traditional)
         if not os.path.exists(self.york_dl):
             os.mkdir(self.york_dl)
+        if not os.path.exists(self.york_binned_normalised):
+            os.mkdir(self.york_binned_normalised)
 
     def _initialize_gxt_features(self):
         feature_maps = {}
@@ -68,10 +73,10 @@ class ProjectStrings:
                 if '$;1000;GXTestDataSection;' in line:
                     start_reading = True
                     continue
-                
+
                 if '$;3999;GXTestDataSectionEnd;;' in line:
                     break  # Stop processing after this line
-                
+
                 if start_reading:
                     match = re.search(r'\$;(\d+);([^;]+);', line)
                     if match:
@@ -86,7 +91,7 @@ class ProjectStrings:
             for line in file:
                 if '$;999;PFTestDataSectionEnd;;' in line:
                     break  # Stop processing after this line
-                
+
                 match = re.search(r'\$;(\d+);([^;]+);', line)
                 if match:
                     code, name = match.groups()
@@ -102,7 +107,7 @@ class ProjectStrings:
             for feature in feature_maps:
                 file.write(f"{feature}\n")
         return feature_maps
-   
+
     @property
     def feature_maps(self):
         return self._feature_maps
@@ -126,19 +131,21 @@ class ProjectStrings:
 
         # add some manual mappings
         new_dict['Breath'] = '115'
-        
+
         new_dict['VO2_kg_extrap mL/kg/min'] = '1048'
         new_dict['VO2WorkSlope mL/min/watt'] = '1124'
         new_dict['DeltaVO2Watts L/Min/Watt'] = '1105'
         new_dict['Speed_RPM RPM'] = '1132'
         new_dict['ExerTime_sec sec'] = '1195'
         return new_dict
+
     def wanted_feature_maps(self, features: list):
         # validate the features
         for feature in features:
             if feature not in self.feature_maps:
-                raise ValueError(f"Feature {feature} not found in feature maps")
-        return {feature: self.feature_maps[feature] for feature in features}        
+                raise ValueError(
+                    f"Feature {feature} not found in feature maps")
+        return {feature: self.feature_maps[feature] for feature in features}
 
     @property
     def required_cpet_db_columns(self):
