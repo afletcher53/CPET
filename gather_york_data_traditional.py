@@ -145,6 +145,8 @@ def extract_summaries(ps):
 
 def generate_flat_output(ps):
     files = get_files(ps.york_traditional, "csv")
+    files = [f for f in files if "flat_output_final" not in f]
+
 
     all_rows = []
 
@@ -392,7 +394,7 @@ def generate_flat_output(ps):
 def main():
 
     ps = ProjectStrings()
-    extract_summaries(ps)
+    # extract_summaries(ps)
     generate_flat_output(ps)
 
 
