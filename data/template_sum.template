@@ -1,0 +1,67 @@
+$;5000;InfoSection;;
+$;5001;BreezeVersion;;8.6.0.69
+$;5002;DateFormat;;dd/MM/yyyy
+$;5003;TimeFormat;;HH:mm:ss
+$;5004;HeightUnit;4;cm
+$;5005;WeightUnit;3;kg
+$;5006;MeasurementUnit;0;English
+$;5007;AgeUnit;1;year
+$;5008;LLN/ULN Method;2;From SD
+$;5009;DateCreated;;07/07/2023  13:09:21
+$;5010;TemperatureUnit;2;C
+$;5011;AveragingMethodForSummary;0;Unaveraged
+$;5017;SpeedUnit;5;MPH
+$;5018;BarPressureUnit;0;MMHG
+$;5019;Current Date/Time;;07/07/2023  13:09:21
+$;5020;Current Date;;07/07/2023
+$;5021;Current Time;;13:09:21
+$;5022;DistanceUnit;0;ft
+$;5999;InfoSectionEnd;;
+$;6000;DemographicSection;;
+$;6009;Sex;1;Male
+$;6010;Race;1;Caucasian
+$;6014;VisitDateTime;;05/12/2011  10:25:32
+$;6020;Height;;160.00
+$;6021;Weight;;56.00
+$;6022;BSA;;1.58
+$;6025;Age;;80
+$;6094;GXStartTime;;05/12/2011  10:35:30
+$;6095;GXEndTime;;05/12/2011  10:36:02
+$;6096;StartExercise;;32
+$;6097;StartRecovery;;32
+$;6098;EXProtocol;;10 WATT Ramp
+$;6100;BMI;;21.9
+$;6141;ExerciseDevice;;Bike
+$;6147;GXTotalTime;;0:32
+$;6189;VisitDate;;05/12/2011
+$;6190;VisitTime;;10:25:32
+$;6999;DemographicSectionEnd;;
+$;1000;GXTestDataSection;PredMax;Rest;AT;AT2;VO2Max;WorkMax;MaxValue;%VO2Max/Pred;%WorkMax/Pred;%AT/VO2Max;%AT/Pred;%AT/WorkMax;%AT2/VO2Max;%AT2/Pred;%AT2/WorkMax;MinValue;SD;Mean;%Mean/Pred;MaxValueExercise
+$;1041;RatePresPd;266;;;;;;;;;;;;;;;;;;;
+$;1067;VO2HR mL/beat;11;;;;;;;;;;;;;;;;;;;
+$;1073;Work_Watts Watts;99;;;;;;;;;;;;;;;;;;;
+$;2081;REE_day Kcal/day;1097;;;;;;;;;;;;;;;;;;;
+$;2129;REE_m2hr Kcal/m^2/hr;34;;;;;;;;;;;;;;;;;;;
+$;3032;VE_BTPS L/min;80.0;;;;;;;;;;;;;;;;;;;
+$;3057;VCO2_mLmin mL/min;1790;;;;;;;;;;;;;;;;;;;
+$;3058;VO2_mLmin mL/min;1479;;;;;;;;;;;;;;;;;;;
+$;3059;VO2_kg mL/kg/min;26.4;;;;;;;;;;;;;;;;;;;
+$;3061;VEVO2;38;;;;;;;;;;;;;;;;;;;
+$;3062;VEVCO2;31;;;;;;;;;;;;;;;;;;;
+$;3063;TrueO2;1.6;;;;;;;;;;;;;;;;;;;
+$;3064;TrueCO2;2.0;;;;;;;;;;;;;;;;;;;
+$;3068;HR BPM;140;;;;;;;;;;;;;;;;;;;
+$;3078;HR_Filtered BPM;140;;;;;;;;;;;;;;;;;;;
+$;3190;VO2_Lmin L/min;1.48;;;;;;;;;;;;;;;;;;;
+$;3191;VCO2_Lmin L/min;1.79;;;;;;;;;;;;;;;;;;;
+$;3900;OUES Slope;0.000
+$;3901;VE/VCO2 Slope;0.000
+$;3902;VO2/Work Slope;0.000
+$;3903;Chronotropic Index;0.000
+$;3904;EOV;Undefined
+$;3999;GXTestDataSectionEnd;;
+$;4000;BxBSection;;
+$;4001;0;115;1039;1041;1048;1060;1067;1072;1073;1103;1104;1105;1114;1115;1116;1117;1118;1122;1124;1132;1138;1139;1140;1157;1158;1182;1183;1185;1186;1187;1188;1194;1195;2005;2010;2012;2040;2081;2082;2083;2084;2085;2086;2087;2088;2089;2090;2091;2092;2093;2094;2100;2129;2130;2173;2174;2218;2219;3009;3011;3023;3024;3025;3026;3028;3029;3032;3033;3035;3037;3038;3042;3043;3044;3045;3046;3047;3053;3055;3057;3058;3059;3061;3062;3063;3064;3066;3068;3078;3096;3097;3098;3120;3144;3145;3153;3165;3175;3176;3179;3180;3189;3190;3191;3192;3193;3196;3206;3207;3211;3212;3213;3214;3215;3226;3227;3228
+$;4003;115;mmHg;;mL/kg/min;;mL/beat;MPH;Watts;;Min/L;L/Min/Watt;%;%;BPM;L/Min;%CO2;%;mL/min/watt;RPM;mL;mL;mL/br;%;%;V5 uV;V5;mL;mL;mL/br;mL/br;%CO2;sec;%;%;Kcal/dy/m^2;Kcal/kg;Kcal/day;Kcal/day;L/day;L/day;g/day;g/day;g/day;g/day;Kcal/day;Kcal/day;Kcal/day;%;%;%;KCal/min;Kcal/m^2/hr;Kcal/hr;%;%;%;Kcal/day;mL/m^2;mL/m^2;sec;sec;sec;;mL;mL/sec;L/min;L/min;L/min;mmHg;mmHg;Fraction;Fraction;%;%;mmHg;mmHg;%;%;mL/min;mL/min;mL/kg/min;;;;;mmHg;BPM;BPM;mmHg;;;mL/sec;mL;;mL;KCal/br;%;%;;%;KCal/min;L/min;L/min;L;L;br/min;Kcal/min;Kcal/min;Kcal/hour;Kcal/hour;;L/min;L/min/m^2;;;%
+$;4999;BxBSectionEnd;;
+$;99999;EndOfFile;;

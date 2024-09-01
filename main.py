@@ -39,7 +39,8 @@ def main():
     #     if cpet_raw_empty or data_dir_empty:
     #         if cpet_raw_empty:
     #             raise Exception(
-    #                 "- Please add your SUM files to the cpet raw directory.")
+    #                 "- Please add your SUM files to t
+    # he cpet raw directory.")
     #         if data_dir_empty:
     #             raise Exception(
     #                 "- Please add your CPETdb.xlsx file to the data directory.")
@@ -50,9 +51,9 @@ def main():
     # checks.check_anon_sums(save=True)
     logger.info("Starting data extraction.")
     logger.info("Gathering York data for traditional analysis.")
-    # gather_york_data_traditional.main()
-    logger.info("Gathering York data for DL analysis.")
-    gather_york_data_dl.main()
+    gather_york_data_traditional.main()
+    # logger.info("Gathering York data for DL analysis.")
+    # gather_york_data_dl.main()
 
 
 main()

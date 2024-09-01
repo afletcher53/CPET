@@ -3,6 +3,7 @@ import os
 from Classes.ProjectStrings import ProjectStrings
 import warnings
 from tqdm import tqdm
+import pandas as pd
 
 def get_files(folder, extension):
     """Get all files in a folder with a given extension."""
@@ -141,50 +142,9 @@ def extract_summaries(ps):
             output_path = os.path.join(ps.york_traditional, f"{output_file}.csv")
             df.to_csv(output_path)
 
-# def extract_summaries(ps):
-
-#     import warnings
-
-#     warnings.filterwarnings("ignore")
-#     sum_files = get_files(ps.anonymised, "sum")
-
-#     for file in sum_files:
-#         print(f"Extracting GXT data from {file}")
-
-#         df = extract_gxt_data(file)
-
-#         OUES = float(extract_value(file, "$;3900;OUES Slope;"))
-#         VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
-#         VO2_WORK_SLOPE = float(extract_value(file, "$;3902;VO2/Work Slope;"))
-#         CHRONOTROPIC_INDEX = float(extract_value(file, "$;3903;Chronotropic Index;"))
-#         EXPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
-#         HEIGHT = extract_value(file, "$;6020;Height;;")
-#         WEIGHT = extract_value(file, "$;6021;Weight;;")
-#         SEX = extract_value(file, "$;6009;Sex;")
-#         BSA = extract_value(file, "$;6022;BSA;;")
-
-#         df.loc["OUES"] = [OUES] + [None] * (df.shape[1] - 1)
-#         df.loc["VE/VCO2 Slope"] = [VE_VO2_SLOPE] + [None] * (df.shape[1] - 1)
-#         df.loc["VO2/Work Slope"] = [VO2_WORK_SLOPE] + [None] * (df.shape[1] - 1)
-#         df.loc["Chronotropic Index"] = [CHRONOTROPIC_INDEX] + [None] * (df.shape[1] - 1)
-#         df.loc["EXProtocol"] = [EXPROTOCOL] + [None] * (df.shape[1] - 1)
-#         df.loc["Height"] = [HEIGHT] + [None] * (df.shape[1] - 1)
-#         df.loc["Weight"] = [WEIGHT] + [None] * (df.shape[1] - 1)
-#         df.loc["Sex"] = [SEX] + [None] * (df.shape[1] - 1)
-#         df.loc["BSA"] = [BSA] + [None] * (df.shape[1] - 1)
-
-#         df = df.loc[~df.index.duplicated(keep="first")]
-
-#         file = file.split("/")[-1].split(".")[0]
-#         file = os.path.join(ps.york_traditional, file)
-
-#         df.to_csv(f"{file}.csv")
-
 
 def generate_flat_output(ps):
-    files = get_files(ps.york, "csv")
-    import pandas as pd
-    from tqdm import tqdm
+    files = get_files(ps.york_traditional, "csv")
 
     all_rows = []
 
