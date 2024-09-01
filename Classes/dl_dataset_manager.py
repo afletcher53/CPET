@@ -33,6 +33,10 @@ class DLManager(Generic[T]):
         
         files = get_files(self.strings.york_binned_normalised, ".csv")
 
+        # 2. Calculate the outcome for each file
+        # Load up the outcome data
+        
+
         # for each file, get the _single_variable_data.csv file from the upper directory
         mortality_data = []
         for file in files:

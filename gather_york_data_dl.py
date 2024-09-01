@@ -1,5 +1,6 @@
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
+from bin_dl_data import main as binned_normalised
 from tqdm import tqdm
 
 def get_files(folder, extension):
@@ -85,6 +86,8 @@ def extract_bxb_data_from_file(file, ps):
             "VO2_BSA mL/m^2",
             "VCO2_BSA mL/m^2",
         ]
+
+
         bxb_df = bxb_df[columns_to_keep]
         # cast all to int that can be cast
         bxb_df = bxb_df.apply(pd.to_numeric, errors="coerce")
@@ -195,7 +198,8 @@ def extract_bxb_data(ps):
             )
 def main():
     ps = ProjectStrings()
-    extract_bxb_data(ps)
+    # extract_bxb_data(ps)
+    binned_normalised()
 
 
 if __name__ == "__main__":

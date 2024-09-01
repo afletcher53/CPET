@@ -37,12 +37,77 @@ VisitDate
 VisitTime
 DemographicSectionEnd
 GXTestDataSection
+VO2_Lmin_extrap L/min
+PulsePress mmHg
 RatePresPd
+VO2_kg_extrap mL/kg/min
+RER
 VO2HR mL/beat
 Work_Watts Watts
+DeltaVEVCO2
+DeltaVEVCO2VO2 Min/L
+DeltaVO2Watts L/Min/Watt
+HRR %
+BR %
+HRR_BPM BPM
+BR_Lmin L/Min
+BagCO2 %CO2
+HRR_NoRest %
+VO2WorkSlope mL/min/watt
+Speed_RPM RPM
+VO2_Delta_Sum mL
+VCO2_Delta_Sum mL
+VO2_VCO2_Delta mL/br
+VO2Pred %
+HRPred %
+VO2_sum mL
+VCO2_sum mL
+VO2_mLbr mL/br
+VCO2_mLbr mL/br
+BagCO2_Jn %CO2
+ExerTime_sec sec
+VO2_Covar %
+REE_Covar %
+REE_m2 Kcal/dy/m^2
+REE_kg Kcal/kg
 REE_day Kcal/day
+REE_adj Kcal/day
+VO2_Lday L/day
+VCO2_Lday L/day
+CHO_gm g/day
+Fat_gm g/day
+CHO_Kcal Kcal/day
+Fat_Kcal Kcal/day
+CHOREE %
+FatREE %
+Kcal_exer KCal/min
 REE_m2hr Kcal/m^2/hr
+REE_hr Kcal/hr
+REEHB %
+REEFl %
+REE_CO2_Covar %
+REE_CO2_day Kcal/day
+VO2_BSA mL/m^2
+VCO2_BSA mL/m^2
+Ti sec
+Te sec
+Ttot_sec sec
+TiTtot
+Vt_BTPS_mL mL
+VtTi mL/sec
 VE_BTPS L/min
+VE_STPD L/min
+VE_ATPS L/min
+BP_Systolic mmHg
+BP_Diastolic mmHg
+FETO2_Fr Fraction
+FETCO2_Fr Fraction
+FETO2 %
+FETCO2 %
+PETO2 mmHg
+PETCO2 mmHg
+FIO2 %
+FICO2 %
 VCO2_mLmin mL/min
 VO2_mLmin mL/min
 VO2_kg mL/kg/min
@@ -50,10 +115,37 @@ VEVO2
 VEVCO2
 TrueO2
 TrueCO2
+PECO2 mmHg
 HR BPM
 HR_Filtered BPM
+PaCO2_est mmHg
+VEVO2_MD
+VEVCO2_MD
+VtET mL/sec
+Vd_est mL
+VdVt_est
+Vt_ATPS_mL mL
+Kcal_br KCal/br
+FEO2_mix %
+FECO2_mix %
+Kcal_sum
+SpO2 %
+Kcal_min KCal/min
 VO2_Lmin L/min
 VCO2_Lmin L/min
+Vt_BTPS_L L
+Vt_ATPS_L L
+RR br/min
+CHO_Kcal_min Kcal/min
+Fat_Kcal_min Kcal/min
+CHO_Kcal_hour Kcal/hour
+Fat_Kcal_hour Kcal/hour
+Aerobic_Energy
+COest L/min
+CardiacIndex L/min/m^2
+VO2VE
+VCO2VE
+VCO2_Covar %
 OUES Slope
 VE/VCO2 Slope
 VO2/Work Slope
@@ -61,8 +153,145 @@ Chronotropic Index
 EOV
 GXTestDataSectionEnd
 BxBSection
-0
+139
 115
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
 BxBSectionEnd
 EndOfFile
 HR BPM MaxValue

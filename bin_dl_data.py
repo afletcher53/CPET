@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from Classes.ProjectStrings import ProjectStrings
 
+
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -17,77 +18,71 @@ logging.basicConfig(level=logging.INFO,
                     ])
 logger = logging.getLogger(__name__)
 
+import numpy as np
+import pandas as pd
+import logging
 
-def bin_time_series(df, n_bins=50):
-    """
-    Bin a time series DataFrame into a fixed number of bins and normalize all numeric columns.
-
-    Parameters:
-    df (pd.DataFrame): Input DataFrame with time series data
-    n_bins (int): Number of bins to create
-
-    Returns:
-    pd.DataFrame: Binned DataFrame with n_bins rows and all numeric columns normalized
-    """
-    # Create bins
-    bin_size = len(df) // n_bins
-    bins = [i * bin_size for i in range(n_bins + 1)]
-    bins[-1] = len(df)
-    labels = list(range(1, n_bins + 1))
-
-    # Add bin column
-    df['bin'] = pd.cut(df.index, bins=bins, labels=labels, include_lowest=True)
-
-    # Identify numeric columns
-    numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
-
-    # Group by bin and aggregate
-    agg_dict = {col: 'mean' for col in numeric_columns}
-    binned_df = df.groupby('bin').agg(agg_dict).reset_index(drop=True)
-
-    # Normalize each numeric column between 0 and 1
-    for col in numeric_columns:
-        min_val = binned_df[col].min()
-        max_val = binned_df[col].max()
-        if min_val != max_val:  # Avoid division by zero
-            binned_df[col] = (binned_df[col] - min_val) / (max_val - min_val)
-        else:
-            binned_df[col] = 1  # If all values are the same, set to 1
-
-    return binned_df
-
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def bin_time_series_adaptive(df, n_bins=50, fill_empty=False):
     """
-    Bin a time series DataFrame into a variable number of bins using adaptive binning
-    and normalize all numeric columns.
-
+    Bin a time series DataFrame into a variable number of bins using adaptive binning,
+    normalize all numeric columns, and stretch the data when actual_n_bins < n_bins.
+    
     Parameters:
     df (pd.DataFrame): Input DataFrame with time series data
     n_bins (int): Target number of bins to create
     fill_empty (bool): If True, fill empty bins with NaN values
-
+    
     Returns:
     pd.DataFrame: Binned DataFrame with n_bins rows and all numeric columns normalized
     """
-
     numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
-    actual_n_bins = min(n_bins, len(df)) if not fill_empty else n_bins
+    actual_n_bins = min(n_bins, len(df))
     points_per_bin = max(1, len(df) // actual_n_bins)
-
+    
+    logger.debug(f"Initial n_bins: {n_bins}, actual_n_bins: {actual_n_bins}, points_per_bin: {points_per_bin}")
+    
+    # Create initial bins
     bins = [i * points_per_bin for i in range(actual_n_bins)]
     bins.append(len(df))
-
-    df['bin'] = pd.cut(df.index, bins=bins, labels=range(
-        1, actual_n_bins + 1), include_lowest=True)
-
+    df['bin'] = pd.cut(df.index, bins=bins, labels=range(1, actual_n_bins + 1), include_lowest=True)
+    
+    # Aggregate data
     agg_dict = {col: 'mean' for col in numeric_columns}
-    binned_df = df.groupby('bin').agg(agg_dict).reset_index()
-
-    if fill_empty:
+    binned_df = df.groupby('bin', observed=True).agg(agg_dict).reset_index()
+    
+    logger.debug(f"After grouping, number of bins: {len(binned_df)}")
+    
+    # Adjust actual_n_bins based on the result of grouping
+    actual_n_bins = len(binned_df)
+    
+    # Stretch data if actual_n_bins < n_bins
+    if actual_n_bins < n_bins:
+        logger.debug("Stretching data...")
+        new_index = np.linspace(0, 1, num=n_bins)
+        old_index = np.linspace(0, 1, num=actual_n_bins)
+        
+        stretched_df = pd.DataFrame(index=range(n_bins))
+        for col in numeric_columns:
+            if len(old_index) != len(binned_df[col]):
+                logger.error(f"Mismatch in lengths: old_index ({len(old_index)}), binned_df[{col}] ({len(binned_df[col])})")
+                raise ValueError(f"Mismatch in lengths for column {col}")
+            stretched_df[col] = np.interp(new_index, old_index, binned_df[col])
+        
+        binned_df = stretched_df.reset_index(drop=True)
+    elif fill_empty and actual_n_bins < n_bins:
+        logger.debug("Filling empty bins...")
+        # Fill empty bins if necessary
         all_bins = pd.DataFrame({'bin': range(1, n_bins + 1)})
         binned_df = pd.merge(all_bins, binned_df, on='bin', how='left')
-        binned_df = binned_df.set_index('bin').reset_index(drop=True)
+    else:
+        logger.debug("No stretching or filling required.")
+    
+    logger.debug(f"Final number of bins: {len(binned_df)}")
+    
+    # Normalize numeric columns
     for col in numeric_columns:
         min_val = binned_df[col].min()
         max_val = binned_df[col].max()
@@ -95,12 +90,11 @@ def bin_time_series_adaptive(df, n_bins=50, fill_empty=False):
             binned_df[col] = (binned_df[col] - min_val) / (max_val - min_val)
         elif pd.notna(min_val) and pd.notna(max_val):
             binned_df[col] = 1
-
-    binned_df = binned_df.drop(columns='bin')
-    bined_df = binned_df.drop(columns='Phase')
+    
+    # Drop unnecessary columns
+    binned_df = binned_df.drop(columns=['bin'], errors='ignore')
+    
     return binned_df
-
-
 def get_files(folder, extension):
     """Get all files in a folder with a given extension."""
     import os
