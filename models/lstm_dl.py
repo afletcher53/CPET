@@ -3,21 +3,22 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
-import math
 import wandb
 from sklearn.model_selection import ParameterGrid
+from imblearn.over_sampling import SMOTE
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-# Initialize wandb
-wandb.init(project="combined-model", name="hyperparameter-tuning")
-
-# Load and check data
-def load_and_check_data(file_name):
-    data = np.load(file_name)
-    print(f"{file_name} shape: {data.shape}")
-    print(f"Contains NaN: {np.isnan(data).any()}")
-    print(f"Contains Inf: {np.isinf(data).any()}")
-    print(f"Min: {np.min(data)}, Max: {np.max(data)}")
-    return data
+def set_random_seeds(seed=42):
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def handle_nan_values(data, strategy='mean'):
     if strategy == 'mean':
@@ -29,24 +30,38 @@ def handle_nan_values(data, strategy='mean'):
     else:
         raise ValueError("Invalid strategy. Choose 'mean', 'median', or 'zero'.")
 
-# Load and preprocess data
-X_bxb_train = load_and_check_data('X_bxb_train.npy')
-X_bxb_val = load_and_check_data('X_bxb_val.npy')
-X_bxb_test = load_and_check_data('X_bxb_test.npy')
-X_cat_train = load_and_check_data('X_cat_train.npy')
-X_cat_val = load_and_check_data('X_cat_val.npy')
-X_cat_test = load_and_check_data('X_cat_test.npy')
+def load_and_preprocess_data():
+    X_bxb_train = np.load('X_bxb_train.npy')
+    X_bxb_val = np.load('X_bxb_val.npy')
+    X_bxb_test = np.load('X_bxb_test.npy')
+    X_cat_train = np.load('X_cat_train.npy')
+    X_cat_val = np.load('X_cat_val.npy')
+    X_cat_test = np.load('X_cat_test.npy')
+    y_train = np.load('y_train.npy')
+    y_val = np.load('y_val.npy')
+    y_test = np.load('y_test.npy')
 
-X_cat_train = handle_nan_values(X_cat_train, strategy='mean')
-X_cat_val = handle_nan_values(X_cat_val, strategy='mean')
-X_cat_test = handle_nan_values(X_cat_test, strategy='mean')
+    X_cat_train = handle_nan_values(X_cat_train, strategy='mean')
+    X_cat_val = handle_nan_values(X_cat_val, strategy='mean')
+    X_cat_test = handle_nan_values(X_cat_test, strategy='mean')
 
-y_train = load_and_check_data('y_train.npy')
-y_val = load_and_check_data('y_val.npy')
-y_test = load_and_check_data('y_test.npy')
+    X_bxb_train_reshaped = X_bxb_train.reshape(X_bxb_train.shape[0], -1)
+    X_combined_train = np.concatenate((X_bxb_train_reshaped, X_cat_train), axis=1)
 
-print("Class distribution (train):", np.unique(y_train, return_counts=True))
-print("Class distribution (val):", np.unique(y_val, return_counts=True))
+    smote = SMOTE(random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X_combined_train, y_train)
+
+    X_bxb_resampled = X_resampled[:, :X_bxb_train_reshaped.shape[1]].reshape(-1, X_bxb_train.shape[1], X_bxb_train.shape[2])
+    X_cat_resampled = X_resampled[:, X_bxb_train_reshaped.shape[1]:]
+
+    scaler = StandardScaler()
+    X_cat_resampled = scaler.fit_transform(X_cat_resampled)
+    X_cat_val = scaler.transform(X_cat_val)
+    X_cat_test = scaler.transform(X_cat_test)
+
+    return (X_bxb_resampled, X_cat_resampled, y_resampled,
+            X_bxb_val, X_cat_val, y_val,
+            X_bxb_test, X_cat_test, y_test)
 
 class CombinedModel(nn.Module):
     def __init__(self, bxb_input_size, cat_input_size, lstm_hidden_size, dnn_hidden_sizes, output_size):
@@ -79,6 +94,36 @@ class CombinedModel(nn.Module):
         
         return output
 
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(LSTMModel, self).__init__()
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, batch_first=True)
+        self.bn = nn.BatchNorm1d(hidden_size)
+        self.fc = nn.Linear(hidden_size, output_size)
+    
+    def forward(self, x):
+        lstm_out, _ = self.lstm(x)
+        lstm_last = lstm_out[:, -1, :]
+        lstm_last = self.bn(lstm_last)
+        output = self.fc(lstm_last)
+        return output
+
+class DNNModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size):
+        super(DNNModel, self).__init__()
+        layers = []
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(input_size, hidden_size))
+            layers.append(nn.BatchNorm1d(hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(0.2))
+            input_size = hidden_size
+        layers.append(nn.Linear(hidden_sizes[-1], output_size))
+        self.dnn = nn.Sequential(*layers)
+    
+    def forward(self, x):
+        return self.dnn(x)
+
 def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
@@ -92,41 +137,29 @@ def init_weights(m):
             elif 'bias' in name:
                 param.data.fill_(0)
 
-# Convert numpy arrays to PyTorch tensors
-X_bxb_train_tensor = torch.FloatTensor(X_bxb_train)
-X_cat_train_tensor = torch.FloatTensor(X_cat_train)
-y_train_tensor = torch.FloatTensor(y_train).unsqueeze(1)
-
-X_bxb_val_tensor = torch.FloatTensor(X_bxb_val)
-X_cat_val_tensor = torch.FloatTensor(X_cat_val)
-y_val_tensor = torch.FloatTensor(y_val).unsqueeze(1)
-
-X_bxb_test_tensor = torch.FloatTensor(X_bxb_test)
-X_cat_test_tensor = torch.FloatTensor(X_cat_test)
-y_test_tensor = torch.FloatTensor(y_test).unsqueeze(1)
-
-# Hyperparameter grid
-param_grid = {
-    'lstm_hidden_size': [16, 32, 64],
-    'dnn_hidden_sizes': [[16, 8], [32, 16], [64, 32]],
-    'batch_size': [128, 256, 512],
-    'learning_rate': [0.001, 0.0001, 0.00001]
-}
-
-# Function to train and evaluate model
-def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=50):
+def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=50, model_name=""):
     best_val_loss = float('inf')
+    step = 0
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
-        for X_bxb_batch, X_cat_batch, y_batch in train_loader:
+        for batch in train_loader:
             optimizer.zero_grad()
-            outputs = model(X_bxb_batch, X_cat_batch)
+            if len(batch) == 3:  # Combined model
+                X_bxb_batch, X_cat_batch, y_batch = batch
+                outputs = model(X_bxb_batch, X_cat_batch)
+            else:  # LSTM or DNN model
+                X_batch, y_batch = batch
+                outputs = model(X_batch)
             loss = criterion(outputs, y_batch)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             total_loss += loss.item()
+            
+            # Log training loss at each step
+            wandb.log({f"{model_name}/train_loss": loss.item()}, step=step)
+            step += 1
         
         avg_train_loss = total_loss / len(train_loader)
         
@@ -135,8 +168,13 @@ def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, sc
         val_correct = 0
         val_total = 0
         with torch.no_grad():
-            for X_bxb_val, X_cat_val, y_val in val_loader:
-                val_outputs = model(X_bxb_val, X_cat_val)
+            for batch in val_loader:
+                if len(batch) == 3:  # Combined model
+                    X_bxb_val, X_cat_val, y_val = batch
+                    val_outputs = model(X_bxb_val, X_cat_val)
+                else:  # LSTM or DNN model
+                    X_val, y_val = batch
+                    val_outputs = model(X_val)
                 val_loss += criterion(val_outputs, y_val).item()
                 val_preds = (torch.sigmoid(val_outputs) > 0.5).float()
                 val_correct += (val_preds == y_val).float().sum().item()
@@ -150,82 +188,172 @@ def train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, sc
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
         
+        # Log validation metrics at the end of each epoch
         wandb.log({
-            "epoch": epoch + 1,
-            "train_loss": avg_train_loss,
-            "val_loss": avg_val_loss,
-            "val_accuracy": val_accuracy
-        })
-    
-    return best_val_loss, val_accuracy
+            f"{model_name}/epoch": epoch + 1,
+            f"{model_name}/avg_train_loss": avg_train_loss,
+            f"{model_name}/val_loss": avg_val_loss,
+            f"{model_name}/val_accuracy": val_accuracy
+        }, step=step)
+        
+        print(f"{model_name} - Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+    return best_val_loss, val_accuracy, step
 
-# Grid search
-best_params = None
-best_val_loss = float('inf')
+def evaluate_model(model, test_loader, criterion):
+    model.eval()
+    test_loss = 0
+    test_correct = 0
+    test_total = 0
+    all_preds = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for batch in test_loader:
+            if len(batch) == 3:  # Combined model
+                X_bxb_test, X_cat_test, y_test = batch
+                outputs = model(X_bxb_test, X_cat_test)
+            else:  # LSTM or DNN model
+                X_test, y_test = batch
+                outputs = model(X_test)
+            
+            test_loss += criterion(outputs, y_test).item()
+            preds = (torch.sigmoid(outputs) > 0.5).float()
+            test_correct += (preds == y_test).float().sum().item()
+            test_total += y_test.size(0)
+            
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(y_test.cpu().numpy())
+    
+    test_loss /= len(test_loader)
+    test_accuracy = test_correct / test_total
+    
+    return test_loss, test_accuracy, all_preds, all_labels
 
-for i, params in enumerate(ParameterGrid(param_grid)):
-    run = wandb.init(project="combined-model", name=f"hparam-tuning-{i}", config=params, reinit=True)
+def plot_confusion_matrix(y_true, y_pred, model_name):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10,7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.title(f'Confusion Matrix - {model_name}')
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(f'{model_name}_confusion_matrix.png')
+    wandb.log({f"{model_name}_confusion_matrix": wandb.Image(f'{model_name}_confusion_matrix.png')})
+
+def main():
+    set_random_seeds()
     
-    model = CombinedModel(X_bxb_train.shape[2], X_cat_train.shape[1], params['lstm_hidden_size'], params['dnn_hidden_sizes'], 1)
-    model.apply(init_weights)
+    wandb.init(project="combined-model", name="model-comparison")
     
-    train_dataset = TensorDataset(X_bxb_train_tensor, X_cat_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=params['batch_size'], shuffle=True)
+    X_bxb_train, X_cat_train, y_train, X_bxb_val, X_cat_val, y_val, X_bxb_test, X_cat_test, y_test = load_and_preprocess_data()
     
-    val_dataset = TensorDataset(X_bxb_val_tensor, X_cat_val_tensor, y_val_tensor)
-    val_loader = DataLoader(val_dataset, batch_size=params['batch_size'], shuffle=False)
+    # Convert to tensors
+    X_bxb_train_tensor = torch.FloatTensor(X_bxb_train)
+    X_cat_train_tensor = torch.FloatTensor(X_cat_train)
+    y_train_tensor = torch.FloatTensor(y_train).unsqueeze(1)
+    X_bxb_val_tensor = torch.FloatTensor(X_bxb_val)
+    X_cat_val_tensor = torch.FloatTensor(X_cat_val)
+    y_val_tensor = torch.FloatTensor(y_val).unsqueeze(1)
+    X_bxb_test_tensor = torch.FloatTensor(X_bxb_test)
+    X_cat_test_tensor = torch.FloatTensor(X_cat_test)
+    y_test_tensor = torch.FloatTensor(y_test).unsqueeze(1)
     
-    class_weights = torch.tensor([1.0, (2330/160)])
-    criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights[1])
-    optimizer = optim.AdamW(model.parameters(), lr=params['learning_rate'], weight_decay=1e-5)
+    # Hyperparameters
+    best_params = {
+        'batch_size': 512,
+        'dnn_hidden_sizes': [64, 32],
+        'learning_rate': 1e-03,
+        'lstm_hidden_size': 16
+    }
+    
+    # Combined Model
+    combined_model = CombinedModel(X_bxb_train.shape[2], X_cat_train.shape[1], best_params['lstm_hidden_size'], best_params['dnn_hidden_sizes'], 1)
+    combined_model.apply(init_weights)
+    
+    combined_train_dataset = TensorDataset(X_bxb_train_tensor, X_cat_train_tensor, y_train_tensor)
+    combined_train_loader = DataLoader(combined_train_dataset, batch_size=best_params['batch_size'], shuffle=True)
+    combined_val_dataset = TensorDataset(X_bxb_val_tensor, X_cat_val_tensor, y_val_tensor)
+    combined_val_loader = DataLoader(combined_val_dataset, batch_size=best_params['batch_size'], shuffle=False)
+    combined_test_dataset = TensorDataset(X_bxb_test_tensor, X_cat_test_tensor, y_test_tensor)
+    combined_test_loader = DataLoader(combined_test_dataset, batch_size=best_params['batch_size'], shuffle=False)
+    
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.AdamW(combined_model.parameters(), lr=best_params['learning_rate'], weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
     
-    val_loss, val_accuracy = train_and_evaluate(model, train_loader, val_loader, criterion, optimizer, scheduler)
+    combined_best_val_loss, combined_val_accuracy, combined_steps = train_and_evaluate(
+        combined_model, combined_train_loader, combined_val_loader, criterion, optimizer, scheduler, 
+        num_epochs=100, model_name="Combined"
+    )
     
-    print(f"Params: {params}")
-    print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+    # LSTM-only Model
+    lstm_model = LSTMModel(X_bxb_train.shape[2], best_params['lstm_hidden_size'], 1)
+    lstm_model.apply(init_weights)
     
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        best_params = params
+    lstm_train_dataset = TensorDataset(X_bxb_train_tensor, y_train_tensor)
+    lstm_train_loader = DataLoader(lstm_train_dataset, batch_size=best_params['batch_size'], shuffle=True)
+    lstm_val_dataset = TensorDataset(X_bxb_val_tensor, y_val_tensor)
+    lstm_val_loader = DataLoader(lstm_val_dataset, batch_size=best_params['batch_size'], shuffle=False)
+    lstm_test_dataset = TensorDataset(X_bxb_test_tensor, y_test_tensor)
+    lstm_test_loader = DataLoader(lstm_test_dataset, batch_size=best_params['batch_size'], shuffle=False)
     
+    lstm_optimizer = optim.AdamW(lstm_model.parameters(), lr=best_params['learning_rate'], weight_decay=1e-5)
+    lstm_scheduler = optim.lr_scheduler.ReduceLROnPlateau(lstm_optimizer, 'min', patience=3, factor=0.1)
+    
+    lstm_best_val_loss, lstm_val_accuracy, lstm_steps = train_and_evaluate(
+        lstm_model, lstm_train_loader, lstm_val_loader, criterion, lstm_optimizer, lstm_scheduler, 
+        num_epochs=100, model_name="LSTM"
+    )
+    
+    # DNN-only Model
+    dnn_model = DNNModel(X_cat_train.shape[1], best_params['dnn_hidden_sizes'], 1)
+    dnn_model.apply(init_weights)
+    
+    dnn_train_dataset = TensorDataset(X_cat_train_tensor, y_train_tensor)
+    dnn_train_loader = DataLoader(dnn_train_dataset, batch_size=best_params['batch_size'], shuffle=True)
+    dnn_val_dataset = TensorDataset(X_cat_val_tensor, y_val_tensor)
+    dnn_val_loader = DataLoader(dnn_val_dataset, batch_size=best_params['batch_size'], shuffle=False)
+    dnn_test_dataset = TensorDataset(X_cat_test_tensor, y_test_tensor)
+    dnn_test_loader = DataLoader(dnn_test_dataset, batch_size=best_params['batch_size'], shuffle=False)
+    
+    dnn_optimizer = optim.AdamW(dnn_model.parameters(), lr=best_params['learning_rate'], weight_decay=1e-5)
+    dnn_scheduler = optim.lr_scheduler.ReduceLROnPlateau(dnn_optimizer, 'min', patience=3, factor=0.1)
+    
+    dnn_best_val_loss, dnn_val_accuracy, dnn_steps = train_and_evaluate(
+        dnn_model, dnn_train_loader, dnn_val_loader, criterion, dnn_optimizer, dnn_scheduler, 
+        num_epochs=100, model_name="DNN"
+    )
+    
+    # Evaluate all models on test set
+    combined_test_loss, combined_test_accuracy, combined_preds, combined_labels = evaluate_model(combined_model, combined_test_loader, criterion)
+    lstm_test_loss, lstm_test_accuracy, lstm_preds, lstm_labels = evaluate_model(lstm_model, lstm_test_loader, criterion)
+    dnn_test_loss, dnn_test_accuracy, dnn_preds, dnn_labels = evaluate_model(dnn_model, dnn_test_loader, criterion)
+    
+    # Plot confusion matrices
+    plot_confusion_matrix(combined_labels, combined_preds, "Combined")
+    plot_confusion_matrix(lstm_labels, lstm_preds, "LSTM")
+    plot_confusion_matrix(dnn_labels, dnn_preds, "DNN")
+    
+    # Print classification reports
+    print("Combined Model Classification Report:")
+    print(classification_report(combined_labels, combined_preds))
+    print("\nLSTM Model Classification Report:")
+    print(classification_report(lstm_labels, lstm_preds))
+    print("\nDNN Model Classification Report:")
+    print(classification_report(dnn_labels, dnn_preds))
+    
+    # Log final results
+    wandb.log({
+        "Combined/test_loss": combined_test_loss,
+        "Combined/test_accuracy": combined_test_accuracy,
+        "LSTM/test_loss": lstm_test_loss,
+        "LSTM/test_accuracy": lstm_test_accuracy,
+        "DNN/test_loss": dnn_test_loss,
+        "DNN/test_accuracy": dnn_test_accuracy
+    }, step=max(combined_steps, lstm_steps, dnn_steps))
+    
+    # Close wandb run
     wandb.finish()
 
-print("Best parameters:", best_params)
-print("Best validation loss:", best_val_loss)
 
-# Train final model with best parameters
-wandb.init(project="combined-model", name="final-model", config=best_params)
-
-final_model = CombinedModel(X_bxb_train.shape[2], X_cat_train.shape[1], best_params['lstm_hidden_size'], best_params['dnn_hidden_sizes'], 1)
-final_model.apply(init_weights)
-
-train_dataset = TensorDataset(X_bxb_train_tensor, X_cat_train_tensor, y_train_tensor)
-train_loader = DataLoader(train_dataset, batch_size=best_params['batch_size'], shuffle=True)
-
-val_dataset = TensorDataset(X_bxb_val_tensor, X_cat_val_tensor, y_val_tensor)
-val_loader = DataLoader(val_dataset, batch_size=best_params['batch_size'], shuffle=False)
-
-criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights[1])
-optimizer = optim.AdamW(final_model.parameters(), lr=best_params['learning_rate'], weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
-
-train_and_evaluate(final_model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=100)
-
-# Final evaluation
-final_model.eval()
-with torch.no_grad():
-    test_outputs = final_model(X_bxb_test_tensor, X_cat_test_tensor)
-    test_loss = criterion(test_outputs, y_test_tensor)
-    test_preds = (torch.sigmoid(test_outputs) > 0.5).float()
-    accuracy = (test_preds == y_test_tensor).float().mean()
-    
-    print(f"Test Loss: {test_loss:.4f}")
-    print(f"Test Accuracy: {accuracy:.4f}")
-
-    wandb.log({
-        "test_loss": test_loss.item(),
-        "test_accuracy": accuracy.item()
-    })
-
-wandb.finish()
+if __name__ == "__main__":
+    main()
