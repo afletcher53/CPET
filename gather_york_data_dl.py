@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
 from bin_dl_data import main as binned_normalised
@@ -118,8 +119,6 @@ def extract_value(file, identifier):
 
 def extract_single_variable_data_from_file(file, ps, bxb_data):
     """Extract single variable data from a given file."""
-    with open(file, "r") as f:
-        content = f.read()
 
     OUES = float(extract_value(file, "$;3900;OUES Slope;"))
     VE_VO2_SLOPE = float(extract_value(file, "$;3901;VE/VCO2 Slope;"))
@@ -164,14 +163,26 @@ def extract_bxb_data(ps):
     """Extract BxB data from all .sum files in the anonymised folder."""
     
     files = list(get_files(ps.anonymised, ".sum"))
-    
+    outcomes = pd.read_excel(os.path.join(ps.york, "outcomes.xlsx"))
     with tqdm(files, desc="Extracting BxB data", unit="file") as pbar:
         for file in pbar:
+            reseach_id = file.split("/")[-1].split("_")[0].split(".")[0]
+            outcome_rd = outcomes.loc[outcomes["Research number"] == int(reseach_id)]
             pbar.set_description(f"Processing {file.split('/')[-1]}")    
             bxb_data = extract_bxb_data_from_file(file, ps)
             single_variable_data = extract_single_variable_data_from_file(
                 file, ps, bxb_data
             )
+            # append ETHNITICY from outcomes
+            if not outcome_rd.empty:
+                # it is a tuple
+                single_variable_data = list(single_variable_data)
+                single_variable_data.append(outcome_rd["Ethnicity"].values[0])
+                single_variable_data.append(outcome_rd["IMD_SCORE"].values[0])
+                single_variable_data.append(outcome_rd["PLANNEDOPTYPE"].values[0])
+            else:
+                # skip this file
+                continue
             if bxb_data is None:
                 continue
             bxb_data.to_csv(
@@ -190,6 +201,9 @@ def extract_bxb_data(ps):
                 "SEX",
                 "BSA",
                 "EXERCISE_TIME",
+                "ETHNICITY",
+                "IMD_SCORE",
+                "PLANNEDOPTYPE",
             ]
             single_variable_data.to_csv(
                 ps.york_dl
@@ -198,7 +212,7 @@ def extract_bxb_data(ps):
             )
 def main():
     ps = ProjectStrings()
-    # extract_bxb_data(ps)
+    extract_bxb_data(ps)
     binned_normalised()
 
 

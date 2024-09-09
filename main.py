@@ -7,6 +7,7 @@ import os
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
 from Classes.integrity_checks import IntegrityChecks
+from data_preparation import generate_mortality_data
 import gather_york_data_dl
 import gather_york_data_traditional
 import init_project
@@ -51,8 +52,10 @@ def main():
     # logger.info("Starting data extraction.")
     # logger.info("Gathering York data for traditional analysis.")
     # gather_york_data_traditional.main()
-    logger.info("Gathering York data for DL analysis.")
-    gather_york_data_dl.main()
-
-
+    # logger.info("Gathering York data for DL analysis.")
+    # gather_york_data_dl.main()
+    generate_mortality_data(days=365)
+    generate_mortality_data(days=180)
+    generate_mortality_data(days=90)
+    generate_mortality_data(days=30)
 main()
