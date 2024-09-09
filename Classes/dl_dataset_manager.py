@@ -7,6 +7,16 @@ from ProjectStrings import ProjectStrings
 
 T = TypeVar('T')
 
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("./logs/main.log"),
+                        logging.StreamHandler()
+                    ])
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class MortalityRecord:
     """
@@ -27,33 +37,66 @@ class DLManager(Generic[T]):
             return self.load_mortality_data()
  
     def load_mortality_data(self) -> list[MortalityRecord]:
-        # Mortality data should have a specific format (Output is binary)
         
-        # 1. get every file in the directory
+        
+        
         
         files = get_files(self.strings.york_binned_normalised, ".csv")
 
-        # for each file, get the _single_variable_data.csv file from the upper directory
+        
+        
+        
+
+
+
+        outcomes = pd.read_excel(os.path.join(self.strings.york, "outcomes.xlsx"))
+
+        
+
+        days = 365
+
+        y = []
+        
+        outcomes['Date of death'] = pd.to_datetime(outcomes['Date of death'], errors='coerce')
+        
+
+        
+        outcomes['dead_days'] = (outcomes['Date of death'] - outcomes['Date of operation']).dt.days
+
+        
+        outcomes['dead_days'] = outcomes['dead_days'].fillna(outcomes['dead_days'].max())
+
+
+        outcomes['y'] = outcomes['dead_days'].apply(lambda x: 1 if x < days else 0)
+
+
+        y = outcomes['y'].tolist()
+       
+        logger.info(f"Total deaths within {days} days: {sum(y)}")
+        
         mortality_data = []
         for file in files:
-            research_id = os.path.basename(file).split("_")[0]
+            research_id = int(os.path.basename(file).split("_")[0])
+
+            id_column = 'Research number' if 'Research number' in outcomes.columns else 'Research id'
+            
+            matching_rows = outcomes.loc[outcomes[id_column] == research_id]
+            
+            if matching_rows.empty:
+                logger.info(f"Warning: No matching row found for research_id {research_id}")
+                continue
+            
+            y_value = matching_rows['y'].values[0]
+            
             mortality_data.append(
                 MortalityRecord(
-
                     x_bxb=pd.read_csv(os.path.join(self.strings.york_binned_normalised, f"{research_id}_bxb.csv")),
                     x_cat=pd.read_csv(os.path.join(self.strings.york_dl, f"{research_id}_single_variable_data.csv")),
-                    y = None
+                    y=int(y_value)
                 )
             )
-
-
-        return []
-
-    def save_data(self, records: list[T]) -> None:
-        # This is a placeholder implementation
-        # You should replace this with actual data saving logic
-        pass
-
+        return mortality_data
+    
 
 def get_files(folder, extension):
     """Get all files in a folder with a given extension."""
@@ -69,6 +112,3 @@ def get_files(folder, extension):
         )
 
     return files
-# Example usage
-mortality_manager = DLManager[MortalityRecord](MortalityRecord)
-records = mortality_manager.load_data()

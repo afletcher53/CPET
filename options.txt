@@ -37,19 +37,24 @@ VisitDate
 VisitTime
 DemographicSectionEnd
 GXTestDataSection
+VO2_Lmin_extrap L/min
 PulsePress mmHg
 RatePresPd
+VO2_kg_extrap mL/kg/min
 RER
 VO2HR mL/beat
 Work_Watts Watts
 DeltaVEVCO2
 DeltaVEVCO2VO2 Min/L
+DeltaVO2Watts L/Min/Watt
 HRR %
 BR %
 HRR_BPM BPM
 BR_Lmin L/Min
 BagCO2 %CO2
 HRR_NoRest %
+VO2WorkSlope mL/min/watt
+Speed_RPM RPM
 VO2_Delta_Sum mL
 VCO2_Delta_Sum mL
 VO2_VCO2_Delta mL/br
@@ -60,6 +65,7 @@ VCO2_sum mL
 VO2_mLbr mL/br
 VCO2_mLbr mL/br
 BagCO2_Jn %CO2
+ExerTime_sec sec
 VO2_Covar %
 REE_Covar %
 REE_m2 Kcal/dy/m^2
@@ -147,7 +153,7 @@ Chronotropic Index
 EOV
 GXTestDataSectionEnd
 BxBSection
-141
+139
 115
 1
 2
@@ -286,8 +292,6 @@ BxBSection
 136
 137
 138
-139
-140
 BxBSectionEnd
 EndOfFile
 HR BPM MaxValue

@@ -1,5 +1,6 @@
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
+from bin_dl_data import main as binned_normalised
 from tqdm import tqdm
 
 def get_files(folder, extension):
@@ -20,7 +21,6 @@ def get_files(folder, extension):
 
 def extract_bxb_data_from_file(file, ps):
     """Extract BxB data from a given file."""
-    import re
 
     with open(file, "r") as f:
         content = f.read()
@@ -86,6 +86,8 @@ def extract_bxb_data_from_file(file, ps):
             "VO2_BSA mL/m^2",
             "VCO2_BSA mL/m^2",
         ]
+
+
         bxb_df = bxb_df[columns_to_keep]
         # cast all to int that can be cast
         bxb_df = bxb_df.apply(pd.to_numeric, errors="coerce")
@@ -165,21 +167,17 @@ def extract_bxb_data(ps):
     
     with tqdm(files, desc="Extracting BxB data", unit="file") as pbar:
         for file in pbar:
-            # Update the description with the current file name
-            pbar.set_description(f"Processing {file.split('/')[-1]}")
-            
+            pbar.set_description(f"Processing {file.split('/')[-1]}")    
             bxb_data = extract_bxb_data_from_file(file, ps)
             single_variable_data = extract_single_variable_data_from_file(
                 file, ps, bxb_data
             )
-            # save the bxb data to a csv file in york_dl
             if bxb_data is None:
                 continue
             bxb_data.to_csv(
                 ps.york_dl + f"/{file.split('/')[-1].replace('.sum', '_bxb.csv')}",
                 index=False,
             )
-            # save the single variable data to a csv file in york_dl
             single_variable_data = pd.DataFrame(single_variable_data).T
             single_variable_data.columns = [
                 "OUES",
@@ -200,7 +198,8 @@ def extract_bxb_data(ps):
             )
 def main():
     ps = ProjectStrings()
-    extract_bxb_data(ps)
+    # extract_bxb_data(ps)
+    binned_normalised()
 
 
 if __name__ == "__main__":

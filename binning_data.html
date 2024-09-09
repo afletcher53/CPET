@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binning Animation</title>
+    <script src="https://unpkg.com/react@17.0.2/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/prop-types@15.7.2/prop-types.js"></script>
+    <script src="https://unpkg.com/recharts@2.1.9/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.14.7/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .binning-animation {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .chart {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .info p {
+            margin: 5px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useCallback, useEffect } = React;
+        const { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } = Recharts;
+
+        const BinningAnimation = () => {
+            const [data, setData] = useState([]);
+            const [binnedData, setBinnedData] = useState([]);
+            const [dataPoints, setDataPoints] = useState(100);
+            const [bins, setBins] = useState(10);
+            const [step, setStep] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+
+            const generateData = useCallback((points) => {
+                return Array.from({ length: points }, (_, i) => ({
+                    x: i,
+                    y: Math.sin(i / 10) * 50 + Math.random() * 20 + 50
+                }));
+            }, []);
+
+            useEffect(() => {
+                setData(generateData(dataPoints));
+                setStep(0);
+                setBinnedData([]);
+            }, [dataPoints, generateData]);
+
+            const binData = useCallback((currentStep) => {
+                const pointsPerBin = Math.max(1, Math.floor(data.length / bins));
+                const newBinnedData = [];
+
+                for (let i = 0; i < currentStep; i++) {
+                    const binStart = i * pointsPerBin;
+                    const binEnd = Math.min((i + 1) * pointsPerBin, data.length);
+                    if (binStart >= data.length) break;
+                    const binData = data.slice(binStart, binEnd);
+                    const avgY = binData.reduce((sum, point) => sum + point.y, 0) / binData.length;
+                    newBinnedData.push({ x: (binStart + binEnd) / 2, y: avgY });
+                }
+
+                setBinnedData(newBinnedData);
+            }, [data, bins]);
+
+            useEffect(() => {
+                if (isPlaying && step < bins) {
+                    const timer = setTimeout(() => {
+                        setStep((prevStep) => prevStep + 1);
+                        binData(step + 1);
+                    }, 500);
+                    return () => clearTimeout(timer);
+                } else if (step >= bins) {
+                    setIsPlaying(false);
+                }
+            }, [isPlaying, step, bins, binData]);
+
+            const togglePlay = () => {
+                if (step >= bins) {
+                    setStep(0);
+                    setBinnedData([]);
+                }
+                setIsPlaying(!isPlaying);
+            };
+
+            return (
+                <div className="binning-animation">
+                    <h2>Enhanced Binning Process Animation</h2>
+                    <div className="controls">
+                        <button onClick={togglePlay}>
+                            {isPlaying ? 'Pause' : (step >= bins ? 'Restart' : 'Play')}
+                        </button>
+                        <div>
+                            <label>Data Points: {dataPoints}</label>
+                            <input
+                                type="range"
+                                min="10"
+                                max="500"
+                                step="10"
+                                value={dataPoints}
+                                onChange={(e) => setDataPoints(Number(e.target.value))}
+                            />
+                        </div>
+                        <div>
+                            <label>Number of Bins: {bins}</label>
+                            <input
+                                type="range"
+                                min="1"
+                                max="100"
+                                step="1"
+                                value={bins}
+                                onChange={(e) => setBins(Number(e.target.value))}
+                            />
+                        </div>
+                    </div>
+                    <div className="chart">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart>
+                                <XAxis dataKey="x" type="number" domain={[0, 'dataMax']} />
+                                <YAxis />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="y" data={data} stroke="#8884d8" dot={false} />
+                                <Line type="stepAfter" dataKey="y" data={binnedData} stroke="#82ca9d" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="info">
+                        <p>Original data points: {data.length}</p>
+                        <p>Number of bins: {bins}</p>
+                        <p>Current step: {step} / {bins}</p>
+                        <p>Points per bin: {Math.max(1, Math.floor(data.length / bins))}</p>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<BinningAnimation />, document.getElementById('root'));
+    </script>
+</body>
+</html>
