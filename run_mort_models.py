@@ -18,8 +18,10 @@ from torch.utils.data import TensorDataset, DataLoader
 from models.models import (
     CNNModel,
     CombinedCNNDnnModel,
+    CombinedDNNModel,
     CombinedLSTMDnnModel,
     DNNModel,
+    DNNTimeseriesModel,
     LSTMModel,
     SuperLearner,
     create_timeseries_model_wrapper,
@@ -29,8 +31,32 @@ from models.models import (
 )
 import pandas as pd
 
-from plotting_functions import plot_confusion_matrix, plot_pr_curve, plot_roc_curve
+from plotting_functions import (
+    plot_roc_curves,
+)
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        pt = torch.exp(-BCE_loss)
+        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+
+        if self.reduction == 'mean':
+            return torch.mean(F_loss)
+        elif self.reduction == 'sum':
+            return torch.sum(F_loss)
+        else:
+            return F_loss
 
 def evaluate_model(model, test_loader, criterion):
     model.eval()
@@ -169,6 +195,7 @@ def train_model(
 
     return epoch_results
 
+
 class CombinedSuperLearnerCNNModel:
     def __init__(self, superlearner, cnn_model):
         self.superlearner = superlearner
@@ -182,7 +209,11 @@ class CombinedSuperLearnerCNNModel:
         # Get predictions from CNN
         self.cnn_model.eval()
         with torch.no_grad():
-            cnn_probs = torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb))).numpy().flatten()
+            cnn_probs = (
+                torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb)))
+                .numpy()
+                .flatten()
+            )
 
         # Combine predictions
         X_combined = np.column_stack((superlearner_probs, cnn_probs))
@@ -197,7 +228,11 @@ class CombinedSuperLearnerCNNModel:
         # Get predictions from CNN
         self.cnn_model.eval()
         with torch.no_grad():
-            cnn_probs = torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb))).numpy().flatten()
+            cnn_probs = (
+                torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb)))
+                .numpy()
+                .flatten()
+            )
 
         # Combine predictions
         X_combined = np.column_stack((superlearner_probs, cnn_probs))
@@ -211,16 +246,17 @@ class CombinedSuperLearnerCNNModel:
 
         roc_auc = roc_auc_score(y_test, probs)
         pr_auc = average_precision_score(y_test, probs)
-        precision, recall, f1, _ = precision_recall_fscore_support(y_test, preds, average='binary')
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            y_test, preds, average="binary"
+        )
 
         return {
-            'roc_auc': roc_auc,
-            'pr_auc': pr_auc,
-            'precision': precision,
-            'recall': recall,
-            'f1_score': f1
+            "roc_auc": roc_auc,
+            "pr_auc": pr_auc,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1,
         }
-
 
 
 def create_model_and_loaders(
@@ -334,11 +370,9 @@ def main():
             "num_epochs": 20,
         }
 
-
         ####################
         # DATA PREPARATION #
         ####################
-
 
         combined_train_dataset = TensorDataset(
             X_bxb_train_tensor, X_cat_train_tensor, y_train_tensor
@@ -396,6 +430,19 @@ def main():
             static_test_dataset, batch_size=best_params["batch_size"], shuffle=False
         )
 
+        total_samples = len(y_train_tensor)
+        positive_samples = y_train_tensor.sum().item()
+        negative_samples = total_samples - positive_samples
+
+        positive_ratio = positive_samples / total_samples
+        negative_ratio = negative_samples / total_samples
+
+        print(f"Positive samples: {positive_samples} ({positive_ratio:.2%})")
+        print(f"Negative samples: {negative_samples} ({negative_ratio:.2%})")
+
+        # Set alpha for Focal Loss
+        alpha = 1 - positive_ratio
+        print(f"Suggested alpha value for focal loss: {alpha:.4f}")
 
         ####################
         # MODEL TRAINING   #
@@ -410,7 +457,8 @@ def main():
         )
         combined_lstm_dnn_model.apply(init_weights)
 
-        criterion = nn.BCEWithLogitsLoss()
+        # criterion = nn.BCEWithLogitsLoss()
+        criterion = FocalLoss(alpha=alpha, gamma=2)
         optimizer = optim.AdamW(
             combined_lstm_dnn_model.parameters(),
             lr=best_params["learning_rate"],
@@ -522,47 +570,105 @@ def main():
             num_epochs=best_params["num_epochs"],
             model_name="Combined CNN+DNN",
         )
-        print("X_bxb_train shape:", X_bxb_train.shape)
-        print("X_cat_train shape:", X_cat_train.shape)
-        print("y_train shape:", y_train.shape)
-    
-    #Superlearner
-    # Create base models
+        dnn_timeseries_model = DNNTimeseriesModel(
+            X_bxb_train.shape[1] * X_bxb_train.shape[2],
+            best_params["dnn_hidden_sizes"],
+            1,
+        )
+        dnn_timeseries_model.apply(init_weights)
+
+        dnn_timeseries_optimizer = optim.AdamW(
+            dnn_timeseries_model.parameters(),
+            lr=best_params["learning_rate"],
+            weight_decay=1e-5,
+        )
+        dnn_timeseries_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            dnn_timeseries_optimizer, "min", patience=3, factor=0.1
+        )
+
+        dnn_timeseries_results = train_model(
+            dnn_timeseries_model,
+            timeseries_train_loader,
+            timeseries_val_loader,
+            criterion,
+            dnn_timeseries_optimizer,
+            dnn_timeseries_scheduler,
+            num_epochs=best_params["num_epochs"],
+            model_name="DNN Timeseries",
+        )
+
+        combined_dnn_model = CombinedDNNModel(
+            static_input_size=X_cat_train.shape[1],
+            timeseries_input_size=X_bxb_train.shape[1] * X_bxb_train.shape[2],
+            hidden_sizes=best_params["dnn_hidden_sizes"],
+            output_size=1
+        )
+        combined_dnn_model.apply(init_weights)
+
+        combined_dnn_optimizer = optim.AdamW(
+            combined_dnn_model.parameters(),
+            lr=best_params["learning_rate"],
+            weight_decay=1e-5,
+        )
+        combined_dnn_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            combined_dnn_optimizer, "min", patience=3, factor=0.1
+        )
+
+        combined_dnn_results = train_model(
+            combined_dnn_model,
+            combined_train_loader,
+            combined_val_loader,
+            criterion,
+            combined_dnn_optimizer,
+            combined_dnn_scheduler,
+            num_epochs=best_params["num_epochs"],
+            model_name="Combined DNN",
+        )
+
+        #################
+        # Superlearners #
+        #################
+
+        # Create base models
         base_models = [
             make_pipeline(StandardScaler(), LogisticRegression(random_state=42)),
-            make_pipeline(StandardScaler(), GradientBoostingClassifier(random_state=42)),
+            make_pipeline(
+                StandardScaler(), GradientBoostingClassifier(random_state=42)
+            ),
             make_pipeline(StandardScaler(), SVC(probability=True, random_state=42)),
             make_pipeline(StandardScaler(), RandomForestClassifier(random_state=42)),
         ]
-
 
         # Create SuperLearner
         superlearner = SuperLearner(base_models, meta_model=LogisticRegression())
         superlearner.fit(X_cat_train, y_train)
 
-                # Wrapping your existing LSTM and CNN models
-        lstm_wrapper = create_timeseries_model_wrapper(LSTMModel, input_size=X_bxb_train.shape[2], hidden_size=16, output_size=1)
+        # Wrapping your existing LSTM and CNN models
+        lstm_wrapper = create_timeseries_model_wrapper(
+            LSTMModel, input_size=X_bxb_train.shape[2], hidden_size=16, output_size=1
+        )
         # For CNNModel, pass input_channels and seq_length instead of input_size and hidden_size
         cnn_wrapper = create_timeseries_model_wrapper(
             CNNModel,
-            input_channels=X_bxb_train.shape[2],  # Channels typically correspond to features in timeseries data
-            seq_length=X_bxb_train.shape[1],  # Sequence length corresponds to the time dimension
-            output_size=1  # Binary classification
+            input_channels=X_bxb_train.shape[
+                2
+            ],  # Channels typically correspond to features in timeseries data
+            seq_length=X_bxb_train.shape[
+                1
+            ],  # Sequence length corresponds to the time dimension
+            output_size=1,  # Binary classification
         )
 
         # Define the SuperLearner with timeseries models only
-        base_models = [
-            lstm_wrapper,
-            cnn_wrapper
-        ]
+        base_models = [lstm_wrapper, cnn_wrapper]
 
         # Create SuperLearner using Logistic Regression as the meta-model
-        supertimelearner = SuperLearner(base_models=base_models, meta_model=LogisticRegression())
+        supertimelearner = SuperLearner(
+            base_models=base_models, meta_model=LogisticRegression()
+        )
 
         # Fit the SuperLearner on your timeseries data
         supertimelearner.fit(X_bxb_train, y_train)
-
-
 
         ####################
         # MODEL EVALUATION #
@@ -577,7 +683,13 @@ def main():
         df4["model"] = "CNN"
         df5 = pd.DataFrame(combined_cnn_dnn_results)
         df5["model"] = "Combined CNN+DNN"
-        df = pd.concat([df, df2, df3, df4, df5])
+        df6 = pd.DataFrame(dnn_timeseries_results)
+        df6["model"] = "DNN Timeseries"
+        df7 = pd.DataFrame(combined_dnn_results)
+        df7["model"] = "Combined DNN"
+        df = pd.concat([df, df2, df3, df4, df5, df6, df7])
+
+
         df.to_csv(f"saved_models/mortality/{day}/train_log.csv", index=False)
         print("Model results saved to model_results.csv")
 
@@ -598,11 +710,31 @@ def main():
             combined_cnn_model.state_dict(),
             f"saved_models/mortality/{day}/combined_cnn_model.pth",
         )
+
+        torch.save(
+            dnn_timeseries_model.state_dict(),
+            f"saved_models/mortality/{day}/dnn_timeseries_model.pth",
+        )
+
+        torch.save(
+            combined_dnn_model.state_dict(), f"saved_models/mortality/{day}/combined_dnn_model.pth"
+        )
+
         print("Models saved")
 
         all_labels = []
         all_probs = []
-        model_names = ["Combined LSTM+DNN", "LSTM", "DNN", "CNN", "Combined CNN+DNN", "SuperLearner", "SuperTimeLearner"]
+        model_names = [
+            "Combined LSTM+DNN",
+            "LSTM",
+            "DNN",
+            "CNN",
+            "Combined CNN+DNN",
+            "SuperLearner",
+            "SuperTimeLearner",
+            "DNN Timeseries",
+            "Combined DNN",
+        ]
 
         for model_name in model_names:
             if model_name == "Combined LSTM+DNN":
@@ -626,34 +758,41 @@ def main():
                     combined_cnn_model, combined_test_loader, criterion
                 )
             elif model_name == "SuperLearner":
-                probs = superlearner.predict_proba(X_cat_test)[:,1]
+                probs = superlearner.predict_proba(X_cat_test)[:, 1]
                 preds = (probs > 0.5).astype(int)
                 labels = y_test
             elif model_name == "SuperTimeLearner":
-                probs = supertimelearner.predict_proba(X_bxb_test)[:,1]
+                probs = supertimelearner.predict_proba(X_bxb_test)[:, 1]
                 preds = (probs > 0.5).astype(int)
                 labels = y_test
-           
+            elif model_name == "DNN Timeseries":
+                metrics, preds, labels, probs = evaluate_model(
+                    dnn_timeseries_model, timeseries_test_loader, criterion
+                )
 
-
+            elif model_name == "Combined DNN":
+                metrics, preds, labels, probs = evaluate_model(
+                    combined_dnn_model, combined_test_loader, criterion
+                )
 
             all_labels.append(labels)
             all_probs.append(probs)
-
-            
 
         # lets create a model that uses the pretrained CNN + Superlearner models to make predictions on the test set
 
         # Usage in main function:
         combined_model = CombinedSuperLearnerCNNModel(superlearner, cnn_model)
         combined_model.fit(X_cat_train, X_bxb_train, y_train)
-        combined_metrics = combined_model.evaluate(X_cat_test, X_bxb_test, y_test)
+       
         all_probs.append(combined_model.predict_proba(X_cat_test, X_bxb_test))
         all_labels.append(y_test)
         model_names.append("Combined SuperLearner+CNN")
-        plot_roc_curve(all_labels, all_probs, model_names, f"saved_models/mortality/{day}")
 
-    
+
+        plot_roc_curves(
+            all_labels, all_probs, model_names, f"saved_models/mortality/{day}"
+        )
+
 
 if __name__ == "__main__":
     main()

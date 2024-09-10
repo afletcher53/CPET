@@ -191,6 +191,42 @@ def init_weights(m):
             elif 'bias' in name:
                 param.data.fill_(0)
 
+class DNNTimeseriesModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size):
+        super(DNNTimeseriesModel, self).__init__()
+        layers = []
+        prev_size = input_size
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            prev_size = hidden_size
+        layers.append(nn.Linear(prev_size, output_size))
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        # Flatten the input
+        x = x.view(x.size(0), -1)
+        return self.network(x)
+class CombinedDNNModel(nn.Module):
+    def __init__(self, static_input_size, timeseries_input_size, hidden_sizes, output_size):
+        super(CombinedDNNModel, self).__init__()
+        
+        self.static_dnn = DNNModel(static_input_size, hidden_sizes, hidden_sizes[-1])
+        self.timeseries_dnn = DNNTimeseriesModel(timeseries_input_size, hidden_sizes, hidden_sizes[-1])
+        
+        self.output_layer = nn.Linear(hidden_sizes[-1] * 2, output_size)
+        
+    def forward(self, x_timeseries, x_static):
+        # Flatten the timeseries input
+        x_timeseries = x_timeseries.view(x_timeseries.size(0), -1)
+        
+        static_out = self.static_dnn(x_static)
+        timeseries_out = self.timeseries_dnn(x_timeseries)
+        
+        combined = torch.cat((static_out, timeseries_out), dim=1)
+        output = self.output_layer(combined)
+        
+        return output
 
 
 import numpy as np
