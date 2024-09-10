@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.base import BaseEstimator, ClassifierMixin
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -192,3 +193,198 @@ def init_weights(m):
 
 
 
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+
+class SuperLearner:
+    def __init__(self, base_models, meta_model=None, n_folds=5):
+        self.base_models = base_models
+        self.meta_model = meta_model if meta_model is not None else LogisticRegression()
+        self.n_folds = n_folds
+
+    def fit(self, X, y):
+        n_models = len(self.base_models)
+        n_samples = X.shape[0]
+        
+        # Initialize out-of-fold predictions
+        S_train = np.zeros((n_samples, n_models))
+        
+        # K-fold cross-validation
+        kf = KFold(n_splits=self.n_folds, shuffle=True, random_state=42)
+        
+        # Train base models and generate out-of-fold predictions
+        for i, model in enumerate(self.base_models):
+            for train_index, val_index in kf.split(X):
+                X_train, X_val = X[train_index], X[val_index]
+                y_train, y_val = y[train_index], y[val_index]
+                
+                model.fit(X_train, y_train)
+                S_train[val_index, i] = model.predict_proba(X_val)[:, 1]
+        
+        # Fit the meta-model on the out-of-fold predictions
+        self.meta_model.fit(S_train, y)
+        
+        # Retrain base models on full dataset
+        for model in self.base_models:
+            model.fit(X, y)
+
+    def predict_proba(self, X):
+        n_models = len(self.base_models)
+        n_samples = X.shape[0]
+        
+        # Generate predictions from base models
+        S_test = np.zeros((n_samples, n_models))
+        for i, model in enumerate(self.base_models):
+            S_test[:, i] = model.predict_proba(X)[:, 1]
+        
+        # Use meta-model to make final predictions
+        return self.meta_model.predict_proba(S_test)
+
+import numpy as np
+from sklearn.model_selection import KFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+class SuperLearner:
+    def __init__(self, base_models, meta_model=None, n_folds=5):
+        self.base_models = base_models
+        self.meta_model = meta_model if meta_model is not None else LogisticRegression()
+        self.n_folds = n_folds
+
+    def fit(self, X, y):
+        n_models = len(self.base_models)
+        n_samples = X.shape[0]
+        
+        # Initialize out-of-fold predictions
+        S_train = np.zeros((n_samples, n_models))
+        
+        # K-fold cross-validation
+        kf = KFold(n_splits=self.n_folds, shuffle=True, random_state=42)
+        
+        # Train base models and generate out-of-fold predictions
+        for i, model in enumerate(self.base_models):
+            for train_index, val_index in kf.split(X):
+                X_train, X_val = X[train_index], X[val_index]
+                y_train, y_val = y[train_index], y[val_index]
+                
+                model.fit(X_train, y_train)
+                S_train[val_index, i] = model.predict_proba(X_val)[:, 1]
+        
+        # Fit the meta-model on the out-of-fold predictions
+        self.meta_model.fit(S_train, y)
+        
+        # Retrain base models on full dataset
+        for model in self.base_models:
+            model.fit(X, y)
+
+    def predict_proba(self, X):
+        n_models = len(self.base_models)
+        n_samples = X.shape[0]
+        
+        # Generate predictions from base models
+        S_test = np.zeros((n_samples, n_models))
+        for i, model in enumerate(self.base_models):
+            S_test[:, i] = model.predict_proba(X)[:, 1]
+        
+        # Use meta-model to make final predictions
+        return self.meta_model.predict_proba(S_test)
+
+def create_pytorch_model_wrapper(model_class, **kwargs):
+    class PyTorchModelWrapper:
+        def __init__(self):
+            self.model = model_class(**kwargs)
+            self.model.eval()
+            self.is_combined_model = isinstance(self.model, (CombinedLSTMDnnModel, CombinedCNNDnnModel))
+
+        def fit(self, X, y):
+            self.model.train()
+            if self.is_combined_model:
+                X_bxb, X_cat = X[:, :, :kwargs['bxb_input_size']], X[:, 0, kwargs['bxb_input_size']:]
+                X_bxb_tensor = torch.FloatTensor(X_bxb)
+                X_cat_tensor = torch.FloatTensor(X_cat)
+                y_tensor = torch.FloatTensor(y).unsqueeze(1)
+                dataset = TensorDataset(X_bxb_tensor, X_cat_tensor, y_tensor)
+            else:
+                X_tensor = torch.FloatTensor(X)
+                y_tensor = torch.FloatTensor(y).unsqueeze(1)
+                dataset = TensorDataset(X_tensor, y_tensor)
+            
+            dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+            
+            criterion = nn.BCEWithLogitsLoss()
+            optimizer = optim.Adam(self.model.parameters())
+            
+            for epoch in range(10):  # You may want to adjust the number of epochs
+                for batch in dataloader:
+                    optimizer.zero_grad()
+                    if self.is_combined_model:
+                        X_bxb_batch, X_cat_batch, y_batch = batch
+                        outputs = self.model(X_bxb_batch, X_cat_batch)
+                    else:
+                        X_batch, y_batch = batch
+                        outputs = self.model(X_batch)
+                    loss = criterion(outputs, y_batch)
+                    loss.backward()
+                    optimizer.step()
+            
+            self.model.eval()
+
+        def predict_proba(self, X):
+            with torch.no_grad():
+                if self.is_combined_model:
+                    X_bxb, X_cat = X[:, :, :kwargs['bxb_input_size']], X[:, 0, kwargs['bxb_input_size']:]
+                    X_bxb_tensor = torch.FloatTensor(X_bxb)
+                    X_cat_tensor = torch.FloatTensor(X_cat)
+                    outputs = self.model(X_bxb_tensor, X_cat_tensor)
+                else:
+                    X_tensor = torch.FloatTensor(X)
+                    outputs = self.model(X_tensor)
+                probs = torch.sigmoid(outputs)
+            return np.column_stack((1 - probs.numpy(), probs.numpy()))
+
+    return PyTorchModelWrapper()
+
+def create_timeseries_model_wrapper(model_class, **kwargs):
+    class TimeSeriesModelWrapper:
+        def __init__(self):
+            # For CNNModel, input_channels and seq_length are expected, not input_size and hidden_size
+            if model_class == CNNModel:
+                self.model = model_class(input_channels=kwargs['input_channels'], seq_length=kwargs['seq_length'], output_size=kwargs['output_size'])
+            else:
+                self.model = model_class(input_size=kwargs['input_size'], hidden_size=kwargs['hidden_size'], output_size=kwargs['output_size'])
+            self.model.eval()
+
+        def fit(self, X, y):
+            self.model.train()
+            X_tensor = torch.FloatTensor(X)
+            y_tensor = torch.FloatTensor(y).unsqueeze(1)
+            dataset = TensorDataset(X_tensor, y_tensor)
+            dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+            criterion = nn.BCEWithLogitsLoss()
+            optimizer = optim.Adam(self.model.parameters())
+
+            for epoch in range(10):  # Adjust the number of epochs as needed
+                for batch in dataloader:
+                    optimizer.zero_grad()
+                    X_batch, y_batch = batch
+                    outputs = self.model(X_batch)
+                    loss = criterion(outputs, y_batch)
+                    loss.backward()
+                    optimizer.step()
+
+            self.model.eval()
+
+        def predict_proba(self, X):
+            self.model.eval()
+            with torch.no_grad():
+                X_tensor = torch.FloatTensor(X)
+                outputs = self.model(X_tensor)
+                probs = torch.sigmoid(outputs)
+            return np.column_stack((1 - probs.numpy(), probs.numpy()))  # Return probabilities
+
+    return TimeSeriesModelWrapper()

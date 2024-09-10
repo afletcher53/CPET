@@ -1,11 +1,16 @@
 import os
 import numpy as np
+from sklearn.discriminant_analysis import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     confusion_matrix,
     precision_recall_fscore_support,
     roc_auc_score,
 )
+from sklearn.pipeline import make_pipeline
+from sklearn.svm import SVC
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,6 +21,8 @@ from models.models import (
     CombinedLSTMDnnModel,
     DNNModel,
     LSTMModel,
+    SuperLearner,
+    create_timeseries_model_wrapper,
     init_weights,
     load_and_preprocess_data,
     set_random_seeds,
@@ -161,6 +168,59 @@ def train_model(
         )
 
     return epoch_results
+
+class CombinedSuperLearnerCNNModel:
+    def __init__(self, superlearner, cnn_model):
+        self.superlearner = superlearner
+        self.cnn_model = cnn_model
+        self.meta_model = LogisticRegression()
+
+    def fit(self, X_cat, X_bxb, y):
+        # Get predictions from SuperLearner
+        superlearner_probs = self.superlearner.predict_proba(X_cat)[:, 1]
+
+        # Get predictions from CNN
+        self.cnn_model.eval()
+        with torch.no_grad():
+            cnn_probs = torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb))).numpy().flatten()
+
+        # Combine predictions
+        X_combined = np.column_stack((superlearner_probs, cnn_probs))
+
+        # Train meta-model
+        self.meta_model.fit(X_combined, y)
+
+    def predict_proba(self, X_cat, X_bxb):
+        # Get predictions from SuperLearner
+        superlearner_probs = self.superlearner.predict_proba(X_cat)[:, 1]
+
+        # Get predictions from CNN
+        self.cnn_model.eval()
+        with torch.no_grad():
+            cnn_probs = torch.sigmoid(self.cnn_model(torch.FloatTensor(X_bxb))).numpy().flatten()
+
+        # Combine predictions
+        X_combined = np.column_stack((superlearner_probs, cnn_probs))
+
+        # Get final predictions
+        return self.meta_model.predict_proba(X_combined)[:, 1]
+
+    def evaluate(self, X_cat_test, X_bxb_test, y_test):
+        probs = self.predict_proba(X_cat_test, X_bxb_test)
+        preds = (probs > 0.5).astype(int)
+
+        roc_auc = roc_auc_score(y_test, probs)
+        pr_auc = average_precision_score(y_test, probs)
+        precision, recall, f1, _ = precision_recall_fscore_support(y_test, preds, average='binary')
+
+        return {
+            'roc_auc': roc_auc,
+            'pr_auc': pr_auc,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1
+        }
+
 
 
 def create_model_and_loaders(
@@ -462,7 +522,51 @@ def main():
             num_epochs=best_params["num_epochs"],
             model_name="Combined CNN+DNN",
         )
+        print("X_bxb_train shape:", X_bxb_train.shape)
+        print("X_cat_train shape:", X_cat_train.shape)
+        print("y_train shape:", y_train.shape)
+    
+    #Superlearner
+    # Create base models
+        base_models = [
+            make_pipeline(StandardScaler(), LogisticRegression(random_state=42)),
+            make_pipeline(StandardScaler(), GradientBoostingClassifier(random_state=42)),
+            make_pipeline(StandardScaler(), SVC(probability=True, random_state=42)),
+            make_pipeline(StandardScaler(), RandomForestClassifier(random_state=42)),
+        ]
 
+
+        # Create SuperLearner
+        superlearner = SuperLearner(base_models, meta_model=LogisticRegression())
+        superlearner.fit(X_cat_train, y_train)
+
+                # Wrapping your existing LSTM and CNN models
+        lstm_wrapper = create_timeseries_model_wrapper(LSTMModel, input_size=X_bxb_train.shape[2], hidden_size=16, output_size=1)
+        # For CNNModel, pass input_channels and seq_length instead of input_size and hidden_size
+        cnn_wrapper = create_timeseries_model_wrapper(
+            CNNModel,
+            input_channels=X_bxb_train.shape[2],  # Channels typically correspond to features in timeseries data
+            seq_length=X_bxb_train.shape[1],  # Sequence length corresponds to the time dimension
+            output_size=1  # Binary classification
+        )
+
+        # Define the SuperLearner with timeseries models only
+        base_models = [
+            lstm_wrapper,
+            cnn_wrapper
+        ]
+
+        # Create SuperLearner using Logistic Regression as the meta-model
+        supertimelearner = SuperLearner(base_models=base_models, meta_model=LogisticRegression())
+
+        # Fit the SuperLearner on your timeseries data
+        supertimelearner.fit(X_bxb_train, y_train)
+
+
+
+        ####################
+        # MODEL EVALUATION #
+        ####################
         df = pd.DataFrame(combined_lstm_dnn_results)
         df["model"] = "Combined LSTM+DNN"
         df2 = pd.DataFrame(lstm_results)
@@ -498,7 +602,7 @@ def main():
 
         all_labels = []
         all_probs = []
-        model_names = ["Combined LSTM+DNN", "LSTM", "DNN", "CNN", "Combined CNN+DNN"]
+        model_names = ["Combined LSTM+DNN", "LSTM", "DNN", "CNN", "Combined CNN+DNN", "SuperLearner", "SuperTimeLearner"]
 
         for model_name in model_names:
             if model_name == "Combined LSTM+DNN":
@@ -521,13 +625,35 @@ def main():
                 metrics, preds, labels, probs = evaluate_model(
                     combined_cnn_model, combined_test_loader, criterion
                 )
+            elif model_name == "SuperLearner":
+                probs = superlearner.predict_proba(X_cat_test)[:,1]
+                preds = (probs > 0.5).astype(int)
+                labels = y_test
+            elif model_name == "SuperTimeLearner":
+                probs = supertimelearner.predict_proba(X_bxb_test)[:,1]
+                preds = (probs > 0.5).astype(int)
+                labels = y_test
+           
+
+
 
             all_labels.append(labels)
             all_probs.append(probs)
 
+            
+
+        # lets create a model that uses the pretrained CNN + Superlearner models to make predictions on the test set
+
+        # Usage in main function:
+        combined_model = CombinedSuperLearnerCNNModel(superlearner, cnn_model)
+        combined_model.fit(X_cat_train, X_bxb_train, y_train)
+        combined_metrics = combined_model.evaluate(X_cat_test, X_bxb_test, y_test)
+        all_probs.append(combined_model.predict_proba(X_cat_test, X_bxb_test))
+        all_labels.append(y_test)
+        model_names.append("Combined SuperLearner+CNN")
         plot_roc_curve(all_labels, all_probs, model_names, f"saved_models/mortality/{day}")
 
-
+    
 
 if __name__ == "__main__":
     main()
