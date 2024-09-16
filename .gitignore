@@ -1,15 +1,17 @@
 */logs/*
-
+wandb/
 *.setupcomplete
-
+*.npy
 *.log
-
+*.txt
+*.DS_Store
 *.csv
 *.xlsx
 *.xls
 *.json
 *.sum
 *.template
+*.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
