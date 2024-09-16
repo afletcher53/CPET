@@ -354,6 +354,12 @@ def main():
             y_test,
         ) = load_and_preprocess_data(directory=directory)
 
+        # from the cat data drop ethnicity and sex (index 4 and 7)
+
+        X_cat_train = np.delete(X_cat_train, [4, 7], axis=1)
+        X_cat_val = np.delete(X_cat_val, [4, 7], axis=1)
+        X_cat_test = np.delete(X_cat_test, [4, 7], axis=1)
+
         X_bxb_train_tensor = torch.FloatTensor(X_bxb_train)
         X_cat_train_tensor = torch.FloatTensor(X_cat_train)
         y_train_tensor = torch.FloatTensor(y_train).unsqueeze(1)

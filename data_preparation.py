@@ -99,6 +99,8 @@ def generate_mortality_data(days=365, output_folder=None):
     
     split_data = split_and_save_data(X_bxb, X_cat, y, output_folder)
     logger.info(f"Data has been split and saved in {output_folder}.")
+
+
     
     return split_data
 

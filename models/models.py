@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
-import wandb
 from sklearn.model_selection import ParameterGrid
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import StandardScaler
