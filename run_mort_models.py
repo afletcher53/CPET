@@ -1,5 +1,11 @@
 import os
+
 import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -11,10 +17,8 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import SVC
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader, TensorDataset
+
 from models.models import (
     CNNModel,
     CombinedCNNDnnModel,
@@ -29,34 +33,31 @@ from models.models import (
     load_and_preprocess_data,
     set_random_seeds,
 )
-import pandas as pd
-
 from plotting_functions import (
     plot_roc_curves,
+    # plot_pr_curves
 )
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2, reduction='mean'):
+    def __init__(self, alpha=0.25, gamma=2, reduction="mean"):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
         pt = torch.exp(-BCE_loss)
-        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+        F_loss = self.alpha * (1 - pt) ** self.gamma * BCE_loss
 
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             return torch.mean(F_loss)
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return torch.sum(F_loss)
         else:
             return F_loss
+
 
 def evaluate_model(model, test_loader, criterion):
     model.eval()
@@ -323,7 +324,8 @@ def create_model_and_loaders(
 
 def main():
     set_random_seeds()
-    days = [365, 180, 90, 30]
+    days = [30]
+    # days = [365, 180, 90, 30]
 
     for day in days:
         directory = f"data/ml_inputs/mortality_{day}"
@@ -601,7 +603,7 @@ def main():
             static_input_size=X_cat_train.shape[1],
             timeseries_input_size=X_bxb_train.shape[1] * X_bxb_train.shape[2],
             hidden_sizes=best_params["dnn_hidden_sizes"],
-            output_size=1
+            output_size=1,
         )
         combined_dnn_model.apply(init_weights)
 
@@ -689,7 +691,6 @@ def main():
         df7["model"] = "Combined DNN"
         df = pd.concat([df, df2, df3, df4, df5, df6, df7])
 
-
         df.to_csv(f"saved_models/mortality/{day}/train_log.csv", index=False)
         print("Model results saved to model_results.csv")
 
@@ -717,7 +718,8 @@ def main():
         )
 
         torch.save(
-            combined_dnn_model.state_dict(), f"saved_models/mortality/{day}/combined_dnn_model.pth"
+            combined_dnn_model.state_dict(),
+            f"saved_models/mortality/{day}/combined_dnn_model.pth",
         )
 
         print("Models saved")
@@ -778,20 +780,21 @@ def main():
             all_labels.append(labels)
             all_probs.append(probs)
 
-        # lets create a model that uses the pretrained CNN + Superlearner models to make predictions on the test set
 
         # Usage in main function:
         combined_model = CombinedSuperLearnerCNNModel(superlearner, cnn_model)
         combined_model.fit(X_cat_train, X_bxb_train, y_train)
-       
+
         all_probs.append(combined_model.predict_proba(X_cat_test, X_bxb_test))
         all_labels.append(y_test)
         model_names.append("Combined SuperLearner+CNN")
 
-
         plot_roc_curves(
             all_labels, all_probs, model_names, f"saved_models/mortality/{day}"
         )
+        # plot_pr_curves(
+        #     all_labels, all_probs, model_names, f"saved_models/mortality/{day}"
+        # )
 
 
 if __name__ == "__main__":

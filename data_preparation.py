@@ -3,7 +3,7 @@ import os
 import numpy as np
 from sklearn.calibration import LabelEncoder
 from Classes.dl_dataset_manager import DLManager, MortalityRecord
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
 
 logging.basicConfig(level=logging.INFO,
@@ -45,9 +45,12 @@ def prepare_data(records):
     
 
     X_cat_array = X_cat_array.astype(float)
+    normalizer_cat = MinMaxScaler()
 
     scaler = StandardScaler()
     X_cat_normalized = scaler.fit_transform(X_cat_array)
+    X_cat_normalized = normalizer_cat.fit_transform(X_cat_array)
+
 
     if len(X_bxb_array.shape) == 3:
         num_samples, num_timesteps, num_features = X_bxb_array.shape
