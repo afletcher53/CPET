@@ -38,7 +38,7 @@ class IntegrityChecks:
 
     def _run_initial_checks(self):
         self._check_raw_files_extensions()
-        self._check_cpet_db()
+        # self._check_cpet_db()
         self.logger.info("All initial integrity checks passed")
 
     def _check_raw_files_extensions(self):

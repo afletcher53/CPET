@@ -210,20 +210,54 @@ def plotting_functions():
     else:
         print("No valid correlation matrices were found. Please check the data.")
 
+def impute_rpm(files):
+    # Initialize a list to store DataFrames
+    dfs = []
+
+    # Read all files
+    for file in files:
+        df = pd.read_csv(file)
+        dfs.append(df)
+
+    ps = ProjectStrings()
+
+    dfs = [df for df in dfs if df['Speed_RPM RPM'].sum() != len(df)]
+    rpm_values = np.array([df['Speed_RPM RPM'].values for df in dfs])
+    
+    # go columnwise, and for each column, calculate the mean of all values that are not zero
+    mean_rpm = np.array([np.mean([value for value in column if value != 0]) for column in rpm_values.T])
+
+    for file in files:
+        df = pd.read_csv(file)
+        if df['Speed_RPM RPM'].all() == 1:
+            df['Speed_RPM RPM'] = mean_rpm
+            # save to the dl/rpm_imputed folder
+            file_name = os.path.basename(file)
+            df.to_csv(os.path.join(ps.york_dl, 'rpm_imputed', file_name), index=False)
+           
+        else:
+            
+            file_name = os.path.basename(file)
+            df.to_csv(os.path.join(ps.york_dl, 'rpm_imputed', file_name), index=False)
+# Update the main function to call impute_rpm
+
 
 def main():
     ps = ProjectStrings()
-    logger.info("Binning and normalizing York DL data")
-    files = get_files(ps.york_dl, ".csv")
-    files = [file for file in files if "_single_" not in file]
-    logger.info(f"Found {len(files)} files to process")
-    for file in tqdm(files, desc="Processing files", unit="file"):
-        df = pd.read_csv(file)
-        file_name = os.path.basename(file)
-        df = bin_time_series_adaptive(df, n_bins=100)
-        df.to_csv(os.path.join(ps.york_binned_normalised, file_name), index=False)
+    # logger.info("Binning and normalizing York DL data")
+    # files = get_files(ps.york_dl, ".csv")
+    # files = [file for file in files if "_single_" not in file]
+    # logger.info(f"Found {len(files)} files to process")
 
+    # for file in tqdm(files, desc="Processing files", unit="file"):
+    #     df = pd.read_csv(file)
+    #     file_name = os.path.basename(file)
+    #     df = bin_time_series_adaptive(df, n_bins=100)
+    #     df.to_csv(os.path.join(ps.york_binned_normalised, file_name), index=False)
 
+    binned_files = get_files(ps.york_binned_normalised, ".csv")
+    logger.info(f"Imputing RPM values for missing ones")
+    impute_rpm(binned_files)
 if __name__ == "__main__":
     # plotting_functions()
     main()

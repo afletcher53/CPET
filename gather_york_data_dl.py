@@ -66,7 +66,7 @@ def extract_bxb_data_from_file(file, ps):
             "RR br/min",
             "VEVO2",
             "VEVCO2",
-            "Speed_RPM RPM",
+            # "Speed_RPM RPM",
             "Vt_BTPS_L L",
             "Work_Watts Watts",
             "HRR %",
@@ -83,9 +83,9 @@ def extract_bxb_data_from_file(file, ps):
             "VtET mL/sec",
             "Vd_est mL",
             "VdVt_est",
-            "VO2WorkSlope mL/min/watt",
-            "VO2_BSA mL/m^2",
-            "VCO2_BSA mL/m^2",
+            "VO2WorkSlope mL/min/watt"
+            # "VO2_BSA mL/m^2",
+            # "VCO2_BSA mL/m^2",
         ]
 
 
@@ -106,7 +106,6 @@ def extract_bxb_data_from_file(file, ps):
             (bxb_df["Phase"] == 2) & (bxb_df.index > peak_load_index), "Phase"
         ] = 3
 
-        # calculate the phase of test similar to check_integrities
         return bxb_df
 
 
@@ -134,7 +133,9 @@ def extract_single_variable_data_from_file(file, ps, bxb_data):
 
     def get_exercise_time(bxb_data):
         try:
-            end_sec = bxb_data.loc[bxb_data["Phase"] == 3, "ExerTime_sec sec"].values[0]
+            #end sec is the LAST phase 2
+            end_sec = bxb_data.loc[bxb_data["Phase"] == 2, "ExerTime_sec sec"].values[-1]
+            # end_sec = bxb_data.loc[bxb_data["Phase"] == 3, "ExerTime_sec sec"].values[0]
             start_sec = bxb_data.loc[bxb_data["Phase"] == 2, "ExerTime_sec sec"].values[
                 0
             ]
@@ -179,7 +180,11 @@ def extract_bxb_data(ps):
                 single_variable_data = list(single_variable_data)
                 single_variable_data.append(outcome_rd["Ethnicity"].values[0])
                 single_variable_data.append(outcome_rd["IMD_SCORE"].values[0])
-                single_variable_data.append(outcome_rd["PLANNEDOPTYPE"].values[0])
+                # single_variable_data.append(outcome_rd["PLANNEDOPTYPE"].values[0])
+                single_variable_data.append(outcome_rd['Date of CPET test'].values[0])
+                single_variable_data.append(outcome_rd['Date of operation'].values[0])
+                single_variable_data.append(outcome_rd['OP_REFE_SPECIALTY'].values[0])
+
             else:
                 # skip this file
                 continue
@@ -203,7 +208,11 @@ def extract_bxb_data(ps):
                 "EXERCISE_TIME",
                 "ETHNICITY",
                 "IMD_SCORE",
-                "PLANNEDOPTYPE",
+                # "PLANNEDOPTYPE",
+                'DATE_OF_CPET_TEST',
+                'DATE_OF_OPERATION',
+                'OPERATION_SPECIALTY'
+
             ]
             single_variable_data.to_csv(
                 ps.york_dl
