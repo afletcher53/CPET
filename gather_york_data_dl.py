@@ -66,7 +66,7 @@ def extract_bxb_data_from_file(file, ps):
             "RR br/min",
             "VEVO2",
             "VEVCO2",
-            # "Speed_RPM RPM",
+            "Speed_RPM RPM",
             "Vt_BTPS_L L",
             "Work_Watts Watts",
             "HRR %",
@@ -128,14 +128,15 @@ def extract_single_variable_data_from_file(file, ps, bxb_data):
     WEIGHT = extract_value(file, "$;6021;Weight;;")
     SEX = extract_value(file, "$;6009;Sex;")
     BSA = extract_value(file, "$;6022;BSA;;")
+    RAMPPROTOCOL = extract_value(file, "$;6098;EXProtocol;;")
 
-    # exercise time is the phase from the start of test (phase 1) to the end of test (phase 3)
+
+    # exercise time is the phase from the start of test (phase 1) to the end of test (last phase 2)
 
     def get_exercise_time(bxb_data):
         try:
             #end sec is the LAST phase 2
             end_sec = bxb_data.loc[bxb_data["Phase"] == 2, "ExerTime_sec sec"].values[-1]
-            # end_sec = bxb_data.loc[bxb_data["Phase"] == 3, "ExerTime_sec sec"].values[0]
             start_sec = bxb_data.loc[bxb_data["Phase"] == 2, "ExerTime_sec sec"].values[
                 0
             ]
@@ -157,6 +158,7 @@ def extract_single_variable_data_from_file(file, ps, bxb_data):
         SEX,
         BSA,
         EXERCISE_TIME,
+        RAMPPROTOCOL,
     )
 
 
@@ -165,30 +167,122 @@ def extract_bxb_data(ps):
     
     files = list(get_files(ps.anonymised, ".sum"))
     outcomes = pd.read_excel(os.path.join(ps.york, "outcomes.xlsx"))
+    no_bxb_data = []
+    no_research_id_in_outcomes = []
+
+    CPET_data = pd.read_excel(os.path.join(ps.data_path, "CPETdb.xlsx"))
+
     with tqdm(files, desc="Extracting BxB data", unit="file") as pbar:
         for file in pbar:
             reseach_id = file.split("/")[-1].split("_")[0].split(".")[0]
             outcome_rd = outcomes.loc[outcomes["Research number"] == int(reseach_id)]
+            cpet_data_rd = CPET_data.loc[CPET_data["Research number"] == int(reseach_id)]
             pbar.set_description(f"Processing {file.split('/')[-1]}")    
             bxb_data = extract_bxb_data_from_file(file, ps)
             single_variable_data = extract_single_variable_data_from_file(
                 file, ps, bxb_data
             )
-            # append ETHNITICY from outcomes
-            if not outcome_rd.empty:
-                # it is a tuple
+
+            if not outcome_rd.empty and not cpet_data_rd.empty:
                 single_variable_data = list(single_variable_data)
                 single_variable_data.append(outcome_rd["Ethnicity"].values[0])
                 single_variable_data.append(outcome_rd["IMD_SCORE"].values[0])
-                # single_variable_data.append(outcome_rd["PLANNEDOPTYPE"].values[0])
                 single_variable_data.append(outcome_rd['Date of CPET test'].values[0])
                 single_variable_data.append(outcome_rd['Date of operation'].values[0])
-                single_variable_data.append(outcome_rd['OP_REFE_SPECIALTY'].values[0])
+                single_variable_data.append(outcome_rd['Operation specialty'].values[0])
+                single_variable_data.append(outcome_rd['Operation subcategory'].values[0])
+                single_variable_data.append(outcome_rd['Haemoglobin g/L'].values[0])
+                single_variable_data.append(outcome_rd[r"White cell count x10\^9/L"].values[0])
+                single_variable_data.append(outcome_rd[r"Platelets x10\^9/L"].values[0])
+                single_variable_data.append(outcome_rd['Sodium mmol/L'].values[0])
+                single_variable_data.append(outcome_rd['Potassium mmol/L'].values[0])
+                single_variable_data.append(outcome_rd['Urea mmol/L'].values[0])
+                single_variable_data.append(outcome_rd['Creatinine umol/L'].values[0])
+                single_variable_data.append(outcome_rd['Total Protein g/L'].values[0])
+                single_variable_data.append(outcome_rd['Albumin g/L'].values[0])
+                single_variable_data.append(outcome_rd['Total bilirubin umol/L'].values[0])
+                single_variable_data.append(outcome_rd['Alkaline phosphatase IU/L'].values[0])
+                single_variable_data.append(outcome_rd['ALT U/L'].values[0])
+                single_variable_data.append(outcome_rd['Calcium mmol/L'].values[0])
+                single_variable_data.append(outcome_rd['Adjusted calcium mmol/L'].values[0])
+                single_variable_data.append(outcome_rd['eGFR mls/min/1.73 m2'].values[0])
+                single_variable_data.append(outcome_rd['CC_BOOKED_AT_LISTING'].values[0])
+                # sex can be blank so default to 0
+                if len(cpet_data_rd['Sex']) > 0:
+                    single_variable_data.append(cpet_data_rd['Sex'].values[0])
+                else:
+                    single_variable_data.append(0)
 
+                if len(cpet_data_rd['Age at test']) > 0:
+                    single_variable_data.append(cpet_data_rd['Age at test'].values[0])
+                else: 
+                    single_variable_data.append(0) 
+                    
+                # single_variable_data.append(cpet_data_rd['Age at test'].values[0]) 
+                single_variable_data.append(cpet_data_rd['Myocardial infarction'].values[0]) 
+                single_variable_data.append(cpet_data_rd['Ischaemic Heart Disease'].values[0]) 
+                single_variable_data.append(cpet_data_rd['Angina'].values[0]) 
+                single_variable_data.append(cpet_data_rd['CABG / PCI'].values[0])
+                single_variable_data.append(cpet_data_rd['Heart Failure'].values[0])
+                single_variable_data.append(cpet_data_rd['CerebroVasc Dis.'].values[0])
+                single_variable_data.append(cpet_data_rd['Diabetes'].values[0])
+                single_variable_data.append(cpet_data_rd["No. of Lee's CRI factors"].values[0])
+                single_variable_data.append(cpet_data_rd['Dysrhythmia'].values[0])
+                single_variable_data.append(cpet_data_rd['Hypertension'].values[0])
+                single_variable_data.append(cpet_data_rd['COPD'].values[0])
+                single_variable_data.append(cpet_data_rd['Asthma'].values[0])
+                single_variable_data.append(cpet_data_rd['Other lung disease'].values[0])
+                single_variable_data.append(cpet_data_rd['Beta blocker'].values[0])
+                single_variable_data.append(cpet_data_rd['ACE inhibitors'].values[0])
+                single_variable_data.append(cpet_data_rd['Calcium channel blocker'].values[0])
+                single_variable_data.append(cpet_data_rd['Diuretic'].values[0])
+                single_variable_data.append(cpet_data_rd['Other antihypertensive'].values[0])
+                single_variable_data.append(cpet_data_rd['Aspirin'].values[0])
+                single_variable_data.append(cpet_data_rd['Clopidogrel'].values[0])
+                single_variable_data.append(cpet_data_rd['Other anticoagulant'].values[0])
+                single_variable_data.append(cpet_data_rd['Statin'].values[0])
+                single_variable_data.append(cpet_data_rd['Digoxin'].values[0])
+                single_variable_data.append(cpet_data_rd['Insulin'].values[0])
+                single_variable_data.append(cpet_data_rd['Oral hypoglycaemic'].values[0])
+                single_variable_data.append(cpet_data_rd['Inhalers'].values[0])
+                single_variable_data.append(cpet_data_rd['Systemic steroid'].values[0])
+                single_variable_data.append(cpet_data_rd['Anaerobic Threshold  ml/kg/min)'].values[0])
+                single_variable_data.append(cpet_data_rd['Peak VO2'].values[0])
+                single_variable_data.append(cpet_data_rd['VE/VCO2 at AT'].values[0])
+                single_variable_data.append(cpet_data_rd['VO2/HR at AT'].values[0])
+                single_variable_data.append(cpet_data_rd['Oxygen pulse response'].values[0])
+                single_variable_data.append(cpet_data_rd['VO2/Workrate response'].values[0])
+
+
+                # if any of the values are NaN, set them to -1
+                single_variable_data = [-1 if pd.isna(x) else x for x in single_variable_data]
+
+                # convert any that can be into floats
+               
+                for i in range(len(single_variable_data)):
+                    try:
+                        # skip the date columns
+                        if i in [12, 13]:
+                            continue
+                        single_variable_data[i] = float(single_variable_data[i])
+                    except:
+                        pass
+
+                # convert any Nos into 0s and Yes into 1s
+                single_variable_data = [0 if x == "No" else x for x in single_variable_data]
+                single_variable_data = [1 if x == "Yes" else x for x in single_variable_data]
+                # convert any females into 0 and males into 1
+                single_variable_data = [0 if x == "Female" else x for x in single_variable_data]
+                single_variable_data = [1 if x == "Male" else x for x in single_variable_data]
+                # convert any Normals into 0 and Abnormals into 1
+                single_variable_data = [0 if x == "Normal" else x for x in single_variable_data]
+                single_variable_data = [1 if x == "Abnormal" else x for x in single_variable_data]
+                
             else:
-                # skip this file
+                no_research_id_in_outcomes.append(file)
                 continue
             if bxb_data is None:
+                no_bxb_data.append(file)
                 continue
             bxb_data.to_csv(
                 ps.york_dl + f"/{file.split('/')[-1].replace('.sum', '_bxb.csv')}",
@@ -206,12 +300,74 @@ def extract_bxb_data(ps):
                 "SEX",
                 "BSA",
                 "EXERCISE_TIME",
+                "RAMPPROTOCOL",
+
+
+
+        
+ 
+     
+                #CPD data
                 "ETHNICITY",
                 "IMD_SCORE",
-                # "PLANNEDOPTYPE",
                 'DATE_OF_CPET_TEST',
                 'DATE_OF_OPERATION',
-                'OPERATION_SPECIALTY'
+                'OPERATION_SPECIALTY',
+                'OPERATION_SUBCATEGORY',
+                'HAEMOGLOBIN',
+                'WBC',
+                'PLATELETS',
+                'SODIUM',
+                'POTASSIUM',
+                'UREA',
+                'CREATININE',
+                'TOTAL PROTEIN',
+                'ALBUMIN',
+                'TOTAL BILIRUBIN',
+                'ALP',
+                'ALT',
+                'CALCIUM',
+                'ADJUSTED_CALCIUM',
+                'EGFR',
+                'CC_BOOKED_AT_LISTING',
+                # CPET data
+                'CPET_SEX',
+                'AGE',
+                'MI',
+                'IHD',
+                'ANGINA',
+                'CABG_PCI',
+                'HF',
+                'CVD',
+                'DIABETES',
+                'CRI',
+                'DYSRHYTHMIA',
+                'HYPERTENSION',
+                'COPD',
+                'ASTHMA',
+                'OTHER_LUNG_DISEASE',
+                'BETA_BLOCKER',
+                'ACE_INHIBITORS',
+                'CALCIUM_BLOCKER',
+                'DIURETIC',
+                'OTHER_ANTI_HYPERTENSIVE',
+                'ASPIRIN',
+                'CLOPIDOGREL',
+                'OTHER_ANTICOAGULANT',
+                'STATIN',
+                'DIGOXIN',
+                'INSULIN',
+                'ORAL_HYPOGLYCAEMIC',
+                'INHALERS',
+                'SYSTEMIC_STEROID',
+                'AT',
+                'PEAK_VO2',
+                'VE_VCO2_AT',
+                'VO2_HR_AT',
+                'OXYGEN_PULSE',
+                'OXYGVO2_WORKRATE',
+
+
 
             ]
             single_variable_data.to_csv(
@@ -219,6 +375,15 @@ def extract_bxb_data(ps):
                 + f"/{file.split('/')[-1].replace('.sum', '_single_variable_data.csv')}",
                 index=False,
             )
+
+    # save files with no bxb data
+    with open(ps.york_dl + "/empty_bxb_data.txt", "w") as f:
+        f.write("\n".join(no_bxb_data))
+
+    # save files with no research id in outcomes
+    with open(ps.york_dl + "/no_research_id_in_outcomes.txt", "w") as f:
+        f.write("\n".join(no_research_id_in_outcomes))
+
 def main():
     ps = ProjectStrings()
     extract_bxb_data(ps)

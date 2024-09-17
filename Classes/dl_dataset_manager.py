@@ -60,8 +60,8 @@ class DLManager(Generic[T]):
 
             mortality_data.append(
                 MortalityRecord(
-                    x_bxb=pd.read_csv(os.path.join(self.strings.york_binned_normalised, f"{research_id}_bxb.csv")),
-                    x_cat=pd.read_csv(os.path.join(self.strings.york_dl, f"{research_id}_single_variable_data.csv")),
+                    x_bxb=pd.read_csv(os.path.join(self.strings.york_dl, 'rpm_imputed', f"{research_id}_bxb.csv")),
+                    x_cat=pd.read_csv(os.path.join(self.strings.york_dl, 'exercise_time_imputed', f"{research_id}_single_variable_data.csv")),
                     y=int(y_value),
                 )
             )

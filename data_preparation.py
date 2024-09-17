@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import numpy as np
@@ -13,6 +14,44 @@ logging.basicConfig(level=logging.INFO,
                         logging.StreamHandler()
                     ])
 logger = logging.getLogger(__name__)
+
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
+from datetime import datetime
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
+from datetime import datetime
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
+from datetime import datetime
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def identify_non_numeric_columns(array):
+    return [i for i, col in enumerate(array.T) if not np.all(np.vectorize(is_numeric)(col))]
+
+  
+def is_numeric(val):
+        try:
+            float(val)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+def replace_non_numeric_with_mean(column):
+        numeric_values = [float(val) for val in column if is_numeric(val)]
+        if numeric_values:
+            mean = np.mean(numeric_values)
+        else:
+            mean = 0  # Default to 0 if no numeric values are found
+        
+        return np.array([float(val) if is_numeric(val) else mean for val in column])
+
 
 def prepare_data(records):
     X_bxb_list = []
@@ -32,17 +71,52 @@ def prepare_data(records):
     X_cat_array = np.array(X_cat_list)
     y_array = np.array(y_list)
 
-    X_cat_array[:, 4] = np.array([str(x)[:2] for x in X_cat_array[:, 4]])
-    X_cat_array[:, 7] = np.array(
-        [1 if str(x).lower() == "Male" else 0 for x in X_cat_array[:, 7]]
-    )
+    le = LabelEncoder()
 
-    le_ethnicity = LabelEncoder()
-    le_surgery = LabelEncoder()
-
-    X_cat_array[:, 10] = le_ethnicity.fit_transform(X_cat_array[:, 10])
-    X_cat_array[:, 12] = le_surgery.fit_transform(X_cat_array[:, 12])
+    X_cat_array[:, 4] = le.fit_transform(X_cat_array[:, 4]) # ramp protocol
+    X_cat_array[:, 11] = le.fit_transform(X_cat_array[:, 11]) #Ethnicity
+    X_cat_array[:, 11] = le.fit_transform(X_cat_array[:, 11]) #Ethnicity
+    X_cat_array[:, 15] = le.fit_transform(X_cat_array[:, 15]) # surgery type
+    X_cat_array[:, 16] = le.fit_transform(X_cat_array[:, 16]) # surgery type sub
     
+    # X_cat_array[:, 14] = le_surgery.fit_transform(X_cat_array[:, 14])
+    # X_cat_array[:, 14] = le_surgery.fit_transform(X_cat_arra1[:, 14])
+    # X_cat_array[:, 30] = le_cc_boooked_at_listing.fit_transform(X_cat_array[:, 30])
+    
+    def to_unix_timestamp_ms(date_str, column_index):
+        try:
+            if date_str and date_str.strip() and date_str != '\\':
+                if column_index == 13:
+                    # For column 13, parse DD/MM/YYYY
+                    dt = datetime.strptime(date_str, '%d/%m/%Y')
+                    return int(dt.timestamp() * 1000)
+                elif column_index == 14:
+                    # For column 14, convert nanoseconds to milliseconds
+                    return int(float(date_str) / 1e6)  # Convert nanoseconds to milliseconds
+            else:
+                logging.warning(f"Empty or invalid date string in column {column_index}: '{date_str}'")
+                return 0
+        except ValueError as e:
+            logging.error(f"Malformed date string in column {column_index}: '{date_str}'. Error: {str(e)}")
+            return 0
+    # Convert columns 12 and 13 to Unix timestamps
+
+    X_cat_array[:, 13] = np.array([to_unix_timestamp_ms(str(x), 13) for x in X_cat_array[:, 13]])
+    X_cat_array[:, 14] = np.array([to_unix_timestamp_ms(str(x), 14) for x in X_cat_array[:, 14]])
+
+        # drop 10 as its the same as 4
+    X_cat_array = np.delete(X_cat_array, 10, 1)
+    
+    non_numeric_cols = identify_non_numeric_columns(X_cat_array)
+    print(f"Columns with non-numeric data: {non_numeric_cols}")
+
+ 
+    # Apply the replacement function to each column
+    X_cat_array = np.apply_along_axis(replace_non_numeric_with_mean, 0, X_cat_array)
+
+
+
+
 
     X_cat_array = X_cat_array.astype(float)
     normalizer_cat = MinMaxScaler()
@@ -50,7 +124,6 @@ def prepare_data(records):
     scaler = StandardScaler()
     X_cat_normalized = scaler.fit_transform(X_cat_array)
     X_cat_normalized = normalizer_cat.fit_transform(X_cat_array)
-
 
     if len(X_bxb_array.shape) == 3:
         num_samples, num_timesteps, num_features = X_bxb_array.shape
@@ -60,7 +133,6 @@ def prepare_data(records):
         X_bxb_array = X_bxb_array.reshape(num_samples, num_timesteps, num_features)
 
     return X_bxb_array, X_cat_normalized, y_array
-
 def load_and_prepare_data(days):
     mortality_manager = DLManager[MortalityRecord](MortalityRecord, days=days)
     records = mortality_manager.load_data()

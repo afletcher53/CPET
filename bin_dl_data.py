@@ -242,22 +242,44 @@ def impute_rpm(files):
 # Update the main function to call impute_rpm
 
 
+def impute_exercise_time(files):
+    ps = ProjectStrings()
+    exercise_times = []
+    for file in files:
+        df = pd.read_csv(file)
+        if 'EXERCISE_TIME' in df.columns:
+                exercise_times.append(df['EXERCISE_TIME'].values[0])
+    
+    # drop any -1 values
+    exercise_times = list(filter(lambda x: x != -1, exercise_times))
+    avg_exercise_time = np.mean(exercise_times)
+    for file in files:
+        df = pd.read_csv(file)
+        if df['EXERCISE_TIME'].values[0] == -1:
+            df['EXERCISE_TIME'].values[0] = avg_exercise_time
+        file_name = os.path.basename(file)
+        df.to_csv(os.path.join(ps.york_dl, 'exercise_time_imputed', file_name), index=False)
+
 def main():
     ps = ProjectStrings()
-    # logger.info("Binning and normalizing York DL data")
-    # files = get_files(ps.york_dl, ".csv")
-    # files = [file for file in files if "_single_" not in file]
-    # logger.info(f"Found {len(files)} files to process")
+    logger.info("Binning and normalizing York DL data")
+    files = get_files(ps.york_dl, ".csv")
+    files = [file for file in files if "_single_" not in file]
+    logger.info(f"Found {len(files)} files to process")
 
-    # for file in tqdm(files, desc="Processing files", unit="file"):
-    #     df = pd.read_csv(file)
-    #     file_name = os.path.basename(file)
-    #     df = bin_time_series_adaptive(df, n_bins=100)
-    #     df.to_csv(os.path.join(ps.york_binned_normalised, file_name), index=False)
+    for file in tqdm(files, desc="Processing files", unit="file"):
+        df = pd.read_csv(file)
+        file_name = os.path.basename(file)
+        df = bin_time_series_adaptive(df, n_bins=100)
+        df.to_csv(os.path.join(ps.york_binned_normalised, file_name), index=False)
 
     binned_files = get_files(ps.york_binned_normalised, ".csv")
     logger.info(f"Imputing RPM values for missing ones")
     impute_rpm(binned_files)
+
+    logger.info("Imputing missing exercise times")
+    files = get_files(ps.york_dl, "_single_variable_data.csv")
+    impute_exercise_time(files)
 if __name__ == "__main__":
     # plotting_functions()
     main()

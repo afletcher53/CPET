@@ -394,7 +394,7 @@ def generate_flat_output(ps):
 def main():
 
     ps = ProjectStrings()
-    # extract_summaries(ps)
+    extract_summaries(ps)
     generate_flat_output(ps)
 
 

@@ -1,3 +1,4 @@
+import copy
 import os
 
 import numpy as np
@@ -120,7 +121,6 @@ def evaluate_model(model, test_loader, criterion):
 
     return metrics, all_preds, all_labels, all_probs
 
-
 def train_model(
     model,
     train_loader,
@@ -130,8 +130,14 @@ def train_model(
     scheduler,
     num_epochs=50,
     model_name="",
+    patience=5,
+    delta=0.001
 ):
     epoch_results = []
+    best_val_loss = float('inf')
+    counter = 0
+    best_model = None
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -194,7 +200,19 @@ def train_model(
             f"{model_name} - Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {avg_val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}"
         )
 
-    return epoch_results
+        # Early stopping
+        if avg_val_loss < best_val_loss - delta:
+            best_val_loss = avg_val_loss
+            counter = 0
+            best_model = copy.deepcopy(model.state_dict())
+        else:
+            counter += 1
+            if counter >= patience:
+                print(f"Early stopping triggered after {epoch + 1} epochs")
+                model.load_state_dict(best_model)
+                break
+
+    return epoch_results, model
 
 
 class CombinedSuperLearnerCNNModel:
@@ -313,6 +331,7 @@ def create_model_and_loaders(
         train_dataset,
         batch_size=best_params["batch_size"],
         shuffle=True,
+        num_workers=0,
         worker_init_fn=lambda _: set_random_seeds(),
     )
     val_loader = DataLoader(
@@ -324,8 +343,8 @@ def create_model_and_loaders(
 
 def main():
     set_random_seeds()
-    days = [30]
-    # days = [365, 180, 90, 30]
+
+    days = [365, 180, 90, 30]
 
     for day in days:
         directory = f"data/ml_inputs/mortality_{day}"
@@ -356,9 +375,9 @@ def main():
 
         # from the cat data drop ethnicity and sex (index 4 and 7)
 
-        X_cat_train = np.delete(X_cat_train, [4, 7], axis=1)
-        X_cat_val = np.delete(X_cat_val, [4, 7], axis=1)
-        X_cat_test = np.delete(X_cat_test, [4, 7], axis=1)
+        # X_cat_train = np.delete(X_cat_train, [4, 7], axis=1)
+        # X_cat_val = np.delete(X_cat_val, [4, 7], axis=1)
+        # X_cat_test = np.delete(X_cat_test, [4, 7], axis=1)
 
         X_bxb_train_tensor = torch.FloatTensor(X_bxb_train)
         X_cat_train_tensor = torch.FloatTensor(X_cat_train)
@@ -375,7 +394,7 @@ def main():
             "dnn_hidden_sizes": [64, 32],
             "learning_rate": 1e-03,
             "lstm_hidden_size": 16,
-            "num_epochs": 20,
+            "num_epochs": 40,
         }
 
         ####################
@@ -476,7 +495,7 @@ def main():
             optimizer, "min", patience=3, factor=0.1
         )
 
-        combined_lstm_dnn_results = train_model(
+        combined_lstm_dnn_results, combined_lstm_dnn_model = train_model(
             combined_lstm_dnn_model,
             combined_train_loader,
             combined_val_loader,
@@ -485,6 +504,8 @@ def main():
             scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="Combined LSTM+DNN",
+            patience=5,
+            delta=0.001
         )
 
         lstm_model = LSTMModel(X_bxb_train.shape[2], best_params["lstm_hidden_size"], 1)
@@ -497,7 +518,7 @@ def main():
             lstm_optimizer, "min", patience=3, factor=0.1
         )
 
-        lstm_results = train_model(
+        lstm_results, lstm_model = train_model(
             lstm_model,
             timeseries_train_loader,
             timeseries_val_loader,
@@ -506,6 +527,8 @@ def main():
             lstm_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="LSTM",
+            patience=5,
+            delta=0.001
         )
 
         dnn_model = DNNModel(X_cat_train.shape[1], best_params["dnn_hidden_sizes"], 1)
@@ -518,7 +541,7 @@ def main():
             dnn_optimizer, "min", patience=3, factor=0.1
         )
 
-        dnn_results = train_model(
+        dnn_results, dnn_model = train_model(
             dnn_model,
             static_train_loader,
             static_val_loader,
@@ -527,6 +550,8 @@ def main():
             dnn_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="DNN",
+            patience=5,
+            delta=0.001
         )
 
         cnn_model = CNNModel(X_bxb_train.shape[2], X_bxb_train.shape[1], 1)
@@ -539,7 +564,7 @@ def main():
             cnn_optimizer, "min", patience=3, factor=0.1
         )
 
-        cnn_results = train_model(
+        cnn_results, cnn_model = train_model(
             cnn_model,
             timeseries_train_loader,
             timeseries_val_loader,
@@ -548,6 +573,8 @@ def main():
             cnn_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="CNN",
+            patience=5,
+            delta=0.001
         )
 
         combined_cnn_model = CombinedCNNDnnModel(
@@ -568,7 +595,7 @@ def main():
             combined_cnn_optimizer, "min", patience=3, factor=0.1
         )
 
-        combined_cnn_dnn_results = train_model(
+        combined_cnn_dnn_results, combined_cnn_model = train_model(
             combined_cnn_model,
             combined_train_loader,
             combined_val_loader,
@@ -577,6 +604,8 @@ def main():
             combined_cnn_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="Combined CNN+DNN",
+            patience=5,
+            delta=0.001
         )
         dnn_timeseries_model = DNNTimeseriesModel(
             X_bxb_train.shape[1] * X_bxb_train.shape[2],
@@ -594,7 +623,7 @@ def main():
             dnn_timeseries_optimizer, "min", patience=3, factor=0.1
         )
 
-        dnn_timeseries_results = train_model(
+        dnn_timeseries_results, dnn_timeseries_model = train_model(
             dnn_timeseries_model,
             timeseries_train_loader,
             timeseries_val_loader,
@@ -603,6 +632,8 @@ def main():
             dnn_timeseries_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="DNN Timeseries",
+            patience=5,
+            delta=0.001
         )
 
         combined_dnn_model = CombinedDNNModel(
@@ -622,7 +653,7 @@ def main():
             combined_dnn_optimizer, "min", patience=3, factor=0.1
         )
 
-        combined_dnn_results = train_model(
+        combined_dnn_results, combined_dnn_model = train_model(
             combined_dnn_model,
             combined_train_loader,
             combined_val_loader,
@@ -631,6 +662,8 @@ def main():
             combined_dnn_scheduler,
             num_epochs=best_params["num_epochs"],
             model_name="Combined DNN",
+            patience=5,
+            delta=0.001
         )
 
         #################
