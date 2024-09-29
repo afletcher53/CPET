@@ -7,7 +7,7 @@ import os
 import pandas as pd
 from Classes.ProjectStrings import ProjectStrings
 from Classes.integrity_checks import IntegrityChecks
-from data_preparation import generate_mortality_data
+from data_preparation import generate_days_alive_at_home_data, generate_mortality_data
 import gather_york_data_dl
 import gather_york_data_traditional
 import init_project
@@ -48,6 +48,16 @@ def create_anon_files():
         else:
             logger.info("Project initalised with correct file placements.")
 
+def generate_ml_input_data():
+    generate_mortality_data(days=365)
+    generate_mortality_data(days=180)
+    generate_mortality_data(days=90)
+    generate_mortality_data(days=30)
+    generate_days_alive_at_home_data(days=30)
+    generate_days_alive_at_home_data(days=90)
+    generate_days_alive_at_home_data(days=180)
+
+
 def main():
 
     # create_anon_files()
@@ -58,8 +68,6 @@ def main():
     # gather_york_data_traditional.main()
     # logger.info("Gathering York data for DL analysis.")
     # gather_york_data_dl.main()
-    generate_mortality_data(days=365)
-    generate_mortality_data(days=180)
-    generate_mortality_data(days=90)
-    generate_mortality_data(days=30)
+    generate_ml_input_data()
+
 main()

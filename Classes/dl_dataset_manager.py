@@ -22,6 +22,13 @@ class MortalityRecord:
     x_bxb: pd.DataFrame
     x_cat: pd.DataFrame
 
+@dataclass
+class DaysAliveAtHomeRecord:
+    y: int
+    x_bxb: pd.DataFrame
+    x_cat: pd.DataFrame
+
+
 class DLManager(Generic[T]):
     def __init__(self, record_type: type[T], days: int = 365) -> None:
         self.record_type = record_type
@@ -34,6 +41,8 @@ class DLManager(Generic[T]):
     def load_data(self) -> list[T]:
         if self.record_type == MortalityRecord:
             return self.load_mortality_data()
+        elif self.record_type == DaysAliveAtHomeRecord:
+            return self.load_days_alive_at_home_data()
 
     def load_mortality_data(self) -> list[MortalityRecord]:
         files = get_files(self.strings.york_binned_normalised, ".csv")
@@ -67,6 +76,41 @@ class DLManager(Generic[T]):
             )
         return mortality_data
 
+    def load_days_alive_at_home_data(self) -> list[DaysAliveAtHomeRecord]:
+        files = get_files(self.strings.york_binned_normalised, ".csv")
+        outcomes = pd.read_excel(os.path.join(self.strings.york, "outcomes.xlsx"))
+
+        if self.days not in [30,90,180]:
+            raise ValueError("Days must be one of 30, 90 or 180")
+        
+        if self.days == 30:
+            days_column = "DAYS_HOME_IN_30D"
+        elif self.days == 90:
+            days_column = "DAYS_HOME_IN_90D"
+        elif self.days == 180:
+            days_column = "DAYS_HOME_IN_180D"
+
+        doah_data = []
+        for file in files:
+            research_id = int(os.path.basename(file).split("_")[0])
+            id_column = "Research number" if "Research number" in outcomes.columns else "Research id"
+            matching_rows = outcomes.loc[outcomes[id_column] == research_id]
+
+            if matching_rows.empty:
+                logger.info(f"Warning: No matching row found for research_id {research_id}")
+                continue
+
+            y_value = matching_rows[days_column].values[0]
+
+            doah_data.append(
+                DaysAliveAtHomeRecord(
+                    x_bxb=pd.read_csv(os.path.join(self.strings.york_dl, 'rpm_imputed', f"{research_id}_bxb.csv")),
+                    x_cat=pd.read_csv(os.path.join(self.strings.york_dl, 'exercise_time_imputed', f"{research_id}_single_variable_data.csv")),
+                    y=int(y_value),
+                )
+            )
+
+        return doah_data
 def get_files(folder, extension):
     files = [os.path.join(folder, file) for file in os.listdir(folder) if file.endswith(extension)]
     if not files:
